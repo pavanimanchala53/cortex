@@ -7,7 +7,7 @@ import unittest
 import tempfile
 import os
 from datetime import datetime
-from cortex.installation_history import (
+from Installation_history import (
     InstallationHistory,
     InstallationType,
     InstallationStatus,
