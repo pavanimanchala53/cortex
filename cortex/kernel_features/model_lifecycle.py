@@ -16,6 +16,7 @@ from typing import Any
 CORTEX_DB_PATH = Path.home() / ".cortex/models.db"
 CORTEX_SERVICE_DIR = Path.home() / ".config/systemd/user"
 
+
 @dataclass
 class ModelConfig:
     name: str
@@ -34,7 +35,7 @@ class ModelConfig:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'ModelConfig':
+    def from_dict(cls, data: dict[str, Any]) -> "ModelConfig":
         return cls(**data)
 
 
@@ -45,19 +46,21 @@ class ModelDatabase:
 
     def _init_db(self):
         with sqlite3.connect(CORTEX_DB_PATH) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS models (
                     name TEXT PRIMARY KEY,
                     config TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 )
-            """)
+            """
+            )
 
     def save_model(self, config: ModelConfig):
         with sqlite3.connect(CORTEX_DB_PATH) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO models VALUES (?, ?, ?)",
-                (config.name, json.dumps(config.to_dict()), datetime.utcnow().isoformat())
+                (config.name, json.dumps(config.to_dict()), datetime.utcnow().isoformat()),
             )
 
     def get_model(self, name: str) -> ModelConfig | None:
@@ -142,6 +145,7 @@ class ModelLifecycleManager:
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Cortex Model Lifecycle Manager")
     sub = parser.add_subparsers(dest="cmd")
 
@@ -163,14 +167,21 @@ def main():
     mgr = ModelLifecycleManager()
 
     if args.cmd == "register":
-        mgr.register(ModelConfig(args.name, args.path, args.backend, args.port,
-                                 gpu_ids=[int(x) for x in args.gpus.split(",")]))
+        mgr.register(
+            ModelConfig(
+                args.name,
+                args.path,
+                args.backend,
+                args.port,
+                gpu_ids=[int(x) for x in args.gpus.split(",")],
+            )
+        )
     elif args.cmd == "start":
         mgr.start(args.name)
     elif args.cmd == "stop":
         mgr.stop(args.name)
     elif args.cmd in ("status", "list"):
-        mgr.status(getattr(args, 'name', None))
+        mgr.status(getattr(args, "name", None))
 
 
 if __name__ == "__main__":

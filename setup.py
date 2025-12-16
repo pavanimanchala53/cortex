@@ -12,7 +12,11 @@ if not os.path.exists(requirements_path):
 
 if os.path.exists(requirements_path):
     with open(requirements_path, encoding="utf-8") as fh:
-        requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#") and not line.startswith("-r")]
+        requirements = [
+            line.strip()
+            for line in fh
+            if line.strip() and not line.startswith("#") and not line.startswith("-r")
+        ]
 else:
     requirements = ["anthropic>=0.18.0", "openai>=1.0.0"]
 

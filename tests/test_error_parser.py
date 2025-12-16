@@ -31,7 +31,7 @@ class TestErrorParser(unittest.TestCase):
         analysis = self.parser.parse_error(error)
 
         self.assertEqual(analysis.primary_category, ErrorCategory.PACKAGE_NOT_FOUND)
-        self.assertIn('update', analysis.suggested_fixes[0].lower())
+        self.assertIn("update", analysis.suggested_fixes[0].lower())
 
     def test_permission_denied_error(self):
         """Test parsing of permission errors"""
@@ -39,10 +39,9 @@ class TestErrorParser(unittest.TestCase):
 
         analysis = self.parser.parse_error(error)
 
-        self.assertIn(analysis.primary_category, [
-            ErrorCategory.PERMISSION_DENIED,
-            ErrorCategory.LOCK_ERROR
-        ])
+        self.assertIn(
+            analysis.primary_category, [ErrorCategory.PERMISSION_DENIED, ErrorCategory.LOCK_ERROR]
+        )
 
     def test_disk_space_error(self):
         """Test parsing of disk space errors"""
@@ -80,7 +79,7 @@ class TestErrorParser(unittest.TestCase):
 
         self.assertEqual(analysis.primary_category, ErrorCategory.BROKEN_PACKAGE)
         self.assertTrue(analysis.automatic_fix_available)
-        self.assertIn('install -f', analysis.automatic_fix_command)
+        self.assertIn("install -f", analysis.automatic_fix_command)
 
     def test_gpg_key_error(self):
         """Test parsing of GPG key errors"""
@@ -90,7 +89,7 @@ class TestErrorParser(unittest.TestCase):
 
         self.assertEqual(analysis.primary_category, ErrorCategory.GPG_KEY_ERROR)
         self.assertTrue(analysis.automatic_fix_available)
-        self.assertIn('0EBFCD88', analysis.automatic_fix_command)
+        self.assertIn("0EBFCD88", analysis.automatic_fix_command)
 
     def test_lock_error(self):
         """Test parsing of lock file errors"""
@@ -142,9 +141,12 @@ class TestErrorParser(unittest.TestCase):
 
         # Should extract package name
         if analysis.matches:
-            self.assertIn('package', analysis.matches[0].extracted_data.get('group_0', '').lower() or
-                         analysis.matches[0].extracted_data)
+            self.assertIn(
+                "package",
+                analysis.matches[0].extracted_data.get("group_0", "").lower()
+                or analysis.matches[0].extracted_data,
+            )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

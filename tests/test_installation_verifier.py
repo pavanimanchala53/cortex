@@ -16,46 +16,43 @@ class TestInstallationVerifier(unittest.TestCase):
 
     def test_verify_existing_package(self):
         """Test verification of an existing package (python3)"""
-        result = self.verifier.verify_package('python3')
+        result = self.verifier.verify_package("python3")
 
         self.assertIsNotNone(result)
-        self.assertEqual(result.package_name, 'python3')
+        self.assertEqual(result.package_name, "python3")
         self.assertTrue(len(result.tests) > 0)
 
     def test_verify_nonexistent_package(self):
         """Test verification of non-existent package"""
-        result = self.verifier.verify_package('nonexistent-package-xyz')
+        result = self.verifier.verify_package("nonexistent-package-xyz")
 
         self.assertEqual(result.status, VerificationStatus.FAILED)
 
     def test_multiple_packages(self):
         """Test verifying multiple packages"""
-        packages = ['git', 'curl']
+        packages = ["git", "curl"]
         results = self.verifier.verify_multiple_packages(packages)
 
         self.assertEqual(len(results), 2)
 
     def test_summary_generation(self):
         """Test summary statistics"""
-        self.verifier.verify_package('git')
-        self.verifier.verify_package('nonexistent-xyz')
+        self.verifier.verify_package("git")
+        self.verifier.verify_package("nonexistent-xyz")
 
         summary = self.verifier.get_summary()
 
-        self.assertEqual(summary['total'], 2)
-        self.assertGreaterEqual(summary['success'] + summary['failed'], 1)
+        self.assertEqual(summary["total"], 2)
+        self.assertGreaterEqual(summary["success"] + summary["failed"], 1)
 
     def test_custom_tests(self):
         """Test custom test definitions"""
         custom_tests = [
-            {'type': 'command', 'command': 'echo test'},
-            {'type': 'file', 'path': '/bin/bash'}
+            {"type": "command", "command": "echo test"},
+            {"type": "file", "path": "/bin/bash"},
         ]
 
-        result = self.verifier.verify_package(
-            'test-package',
-            custom_tests=custom_tests
-        )
+        result = self.verifier.verify_package("test-package", custom_tests=custom_tests)
 
         self.assertTrue(len(result.tests) >= 2)
 
@@ -64,9 +61,9 @@ class TestInstallationVerifier(unittest.TestCase):
         import os
         import tempfile
 
-        self.verifier.verify_package('git')
+        self.verifier.verify_package("git")
 
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             temp_path = f.name
 
         try:
@@ -75,6 +72,7 @@ class TestInstallationVerifier(unittest.TestCase):
 
             # Verify JSON is valid
             import json
+
             with open(temp_path) as f:
                 data = json.load(f)
 
@@ -85,5 +83,5 @@ class TestInstallationVerifier(unittest.TestCase):
                 os.remove(temp_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

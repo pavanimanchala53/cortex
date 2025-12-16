@@ -20,7 +20,7 @@ class TestInstallationHistory(unittest.TestCase):
 
     def setUp(self):
         # Create temporary database
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.temp_db.close()
         self.history = InstallationHistory(db_path=self.temp_db.name)
 
@@ -37,9 +37,9 @@ class TestInstallationHistory(unittest.TestCase):
         """Test recording an installation"""
         install_id = self.history.record_installation(
             InstallationType.INSTALL,
-            ['test-package'],
-            ['sudo apt-get install test-package'],
-            datetime.now()
+            ["test-package"],
+            ["sudo apt-get install test-package"],
+            datetime.now(),
         )
 
         self.assertIsNotNone(install_id)
@@ -49,15 +49,12 @@ class TestInstallationHistory(unittest.TestCase):
         """Test updating installation status"""
         install_id = self.history.record_installation(
             InstallationType.INSTALL,
-            ['test-package'],
-            ['sudo apt-get install test-package'],
-            datetime.now()
+            ["test-package"],
+            ["sudo apt-get install test-package"],
+            datetime.now(),
         )
 
-        self.history.update_installation(
-            install_id,
-            InstallationStatus.SUCCESS
-        )
+        self.history.update_installation(install_id, InstallationStatus.SUCCESS)
 
         record = self.history.get_installation(install_id)
         self.assertIsNotNone(record)
@@ -69,14 +66,11 @@ class TestInstallationHistory(unittest.TestCase):
         for i in range(3):
             install_id = self.history.record_installation(
                 InstallationType.INSTALL,
-                [f'package-{i}'],
-                [f'sudo apt-get install package-{i}'],
-                datetime.now()
+                [f"package-{i}"],
+                [f"sudo apt-get install package-{i}"],
+                datetime.now(),
             )
-            self.history.update_installation(
-                install_id,
-                InstallationStatus.SUCCESS
-            )
+            self.history.update_installation(install_id, InstallationStatus.SUCCESS)
 
         history = self.history.get_history(limit=10)
         self.assertEqual(len(history), 3)
@@ -85,30 +79,19 @@ class TestInstallationHistory(unittest.TestCase):
         """Test filtering history by status"""
         # Record successful installation
         install_id1 = self.history.record_installation(
-            InstallationType.INSTALL,
-            ['package-1'],
-            ['cmd'],
-            datetime.now()
+            InstallationType.INSTALL, ["package-1"], ["cmd"], datetime.now()
         )
         self.history.update_installation(install_id1, InstallationStatus.SUCCESS)
 
         # Record failed installation
         install_id2 = self.history.record_installation(
-            InstallationType.INSTALL,
-            ['package-2'],
-            ['cmd'],
-            datetime.now()
+            InstallationType.INSTALL, ["package-2"], ["cmd"], datetime.now()
         )
-        self.history.update_installation(
-            install_id2,
-            InstallationStatus.FAILED,
-            "Test error"
-        )
+        self.history.update_installation(install_id2, InstallationStatus.FAILED, "Test error")
 
         # Filter for successful only
         success_history = self.history.get_history(
-            limit=10,
-            status_filter=InstallationStatus.SUCCESS
+            limit=10, status_filter=InstallationStatus.SUCCESS
         )
 
         self.assertEqual(len(success_history), 1)
@@ -117,41 +100,35 @@ class TestInstallationHistory(unittest.TestCase):
     def test_get_specific_installation(self):
         """Test retrieving specific installation by ID"""
         install_id = self.history.record_installation(
-            InstallationType.INSTALL,
-            ['test-package'],
-            ['test-command'],
-            datetime.now()
+            InstallationType.INSTALL, ["test-package"], ["test-command"], datetime.now()
         )
 
         record = self.history.get_installation(install_id)
 
         self.assertIsNotNone(record)
         self.assertEqual(record.id, install_id)
-        self.assertEqual(record.packages, ['test-package'])
+        self.assertEqual(record.packages, ["test-package"])
 
     def test_package_snapshot(self):
         """Test creating package snapshot"""
         # Test with a package that exists on most systems
-        snapshot = self.history._get_package_info('bash')
+        snapshot = self.history._get_package_info("bash")
 
         if snapshot and snapshot.status != "not-installed":
             self.assertIsNotNone(snapshot.version)
-            self.assertEqual(snapshot.package_name, 'bash')
+            self.assertEqual(snapshot.package_name, "bash")
 
     def test_rollback_dry_run(self):
         """Test rollback dry run"""
         # Create a mock installation record
         install_id = self.history.record_installation(
             InstallationType.INSTALL,
-            ['test-package'],
-            ['sudo apt-get install test-package'],
-            datetime.now()
+            ["test-package"],
+            ["sudo apt-get install test-package"],
+            datetime.now(),
         )
 
-        self.history.update_installation(
-            install_id,
-            InstallationStatus.SUCCESS
-        )
+        self.history.update_installation(install_id, InstallationStatus.SUCCESS)
 
         # Try dry run rollback
         success, message = self.history.rollback(install_id, dry_run=True)
@@ -162,43 +139,37 @@ class TestInstallationHistory(unittest.TestCase):
     def test_extract_packages_from_commands(self):
         """Test extracting package names from commands"""
         commands = [
-            'sudo apt-get install -y nginx docker.io',
-            'sudo apt install postgresql',
-            'sudo apt-get remove python3'
+            "sudo apt-get install -y nginx docker.io",
+            "sudo apt install postgresql",
+            "sudo apt-get remove python3",
         ]
 
         packages = self.history._extract_packages_from_commands(commands)
 
-        self.assertIn('nginx', packages)
-        self.assertIn('docker.io', packages)
-        self.assertIn('postgresql', packages)
-        self.assertIn('python3', packages)
+        self.assertIn("nginx", packages)
+        self.assertIn("docker.io", packages)
+        self.assertIn("postgresql", packages)
+        self.assertIn("python3", packages)
 
     def test_export_json(self):
         """Test exporting history to JSON"""
         # Record installation
         install_id = self.history.record_installation(
-            InstallationType.INSTALL,
-            ['test-package'],
-            ['test-command'],
-            datetime.now()
+            InstallationType.INSTALL, ["test-package"], ["test-command"], datetime.now()
         )
         self.history.update_installation(install_id, InstallationStatus.SUCCESS)
 
         # Export
-        temp_export = tempfile.NamedTemporaryFile(
-            mode='w',
-            delete=False,
-            suffix='.json'
-        )
+        temp_export = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json")
         temp_export.close()
 
         try:
-            self.history.export_history(temp_export.name, format='json')
+            self.history.export_history(temp_export.name, format="json")
             self.assertTrue(os.path.exists(temp_export.name))
 
             # Verify file is valid JSON
             import json
+
             with open(temp_export.name) as f:
                 data = json.load(f)
 
@@ -212,31 +183,24 @@ class TestInstallationHistory(unittest.TestCase):
         """Test exporting history to CSV"""
         # Record installation
         install_id = self.history.record_installation(
-            InstallationType.INSTALL,
-            ['test-package'],
-            ['test-command'],
-            datetime.now()
+            InstallationType.INSTALL, ["test-package"], ["test-command"], datetime.now()
         )
         self.history.update_installation(install_id, InstallationStatus.SUCCESS)
 
         # Export
-        temp_export = tempfile.NamedTemporaryFile(
-            mode='w',
-            delete=False,
-            suffix='.csv'
-        )
+        temp_export = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv")
         temp_export.close()
 
         try:
-            self.history.export_history(temp_export.name, format='csv')
+            self.history.export_history(temp_export.name, format="csv")
             self.assertTrue(os.path.exists(temp_export.name))
 
             # Verify file has content
             with open(temp_export.name) as f:
                 content = f.read()
 
-            self.assertIn('ID', content)
-            self.assertIn('Timestamp', content)
+            self.assertIn("ID", content)
+            self.assertIn("Timestamp", content)
         finally:
             if os.path.exists(temp_export.name):
                 os.unlink(temp_export.name)
@@ -245,10 +209,7 @@ class TestInstallationHistory(unittest.TestCase):
         """Test cleaning up old records"""
         # Record installation
         install_id = self.history.record_installation(
-            InstallationType.INSTALL,
-            ['test-package'],
-            ['test-command'],
-            datetime.now()
+            InstallationType.INSTALL, ["test-package"], ["test-command"], datetime.now()
         )
         self.history.update_installation(install_id, InstallationStatus.SUCCESS)
 
@@ -260,9 +221,9 @@ class TestInstallationHistory(unittest.TestCase):
 
     def test_installation_id_generation(self):
         """Test unique ID generation"""
-        id1 = self.history._generate_id(['package-a', 'package-b'])
-        id2 = self.history._generate_id(['package-a', 'package-b'])
-        id3 = self.history._generate_id(['package-c'])
+        id1 = self.history._generate_id(["package-a", "package-b"])
+        id2 = self.history._generate_id(["package-a", "package-b"])
+        id3 = self.history._generate_id(["package-c"])
 
         # Same packages should generate different IDs (due to timestamp)
         # Different packages should generate different IDs
@@ -273,8 +234,8 @@ class TestInstallationHistory(unittest.TestCase):
         install_id = self.history.record_installation(
             InstallationType.INSTALL,
             [],  # Empty packages
-            ['sudo apt-get install -y nginx docker'],
-            datetime.now()
+            ["sudo apt-get install -y nginx docker"],
+            datetime.now(),
         )
 
         record = self.history.get_installation(install_id)
@@ -284,16 +245,15 @@ class TestInstallationHistory(unittest.TestCase):
 
     def test_rollback_nonexistent_installation(self):
         """Test rollback of non-existent installation"""
-        success, message = self.history.rollback('nonexistent-id')
+        success, message = self.history.rollback("nonexistent-id")
         self.assertFalse(success)
-        self.assertIn('not found', message.lower())
+        self.assertIn("not found", message.lower())
 
     def test_get_nonexistent_installation(self):
         """Test getting non-existent installation"""
-        record = self.history.get_installation('nonexistent-id')
+        record = self.history.get_installation("nonexistent-id")
         self.assertIsNone(record)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

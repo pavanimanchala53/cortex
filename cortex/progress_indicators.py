@@ -37,6 +37,7 @@ try:
     from rich.status import Status
     from rich.table import Table
     from rich.text import Text
+
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -46,6 +47,7 @@ logger = logging.getLogger(__name__)
 
 class OperationType(Enum):
     """Types of operations that can show progress."""
+
     INSTALL = "install"
     REMOVE = "remove"
     UPDATE = "update"
@@ -62,6 +64,7 @@ class OperationType(Enum):
 @dataclass
 class OperationStep:
     """Represents a single step in a multi-step operation."""
+
     name: str
     description: str
     status: str = "pending"  # pending, running, completed, failed, skipped
@@ -82,6 +85,7 @@ class OperationStep:
 @dataclass
 class OperationContext:
     """Context for a tracked operation."""
+
     operation_type: OperationType
     title: str
     steps: list[OperationStep] = field(default_factory=list)
@@ -198,7 +202,7 @@ class ProgressIndicator:
         self,
         title: str,
         operation_type: OperationType = OperationType.GENERIC,
-        steps: list[str] | None = None
+        steps: list[str] | None = None,
     ):
         """
         Context manager for tracking an operation with progress.
@@ -213,10 +217,7 @@ class ProgressIndicator:
         context = OperationContext(
             operation_type=operation_type,
             title=title,
-            steps=[
-                OperationStep(name=s, description=s)
-                for s in (steps or [])
-            ]
+            steps=[OperationStep(name=s, description=s) for s in (steps or [])],
         )
 
         self._active_context = context
@@ -258,10 +259,7 @@ class ProgressIndicator:
                 fallback.stop(message)
 
     def progress_bar(
-        self,
-        items: list[Any],
-        description: str = "Processing",
-        show_speed: bool = False
+        self, items: list[Any], description: str = "Processing", show_speed: bool = False
     ) -> Iterator[Any]:
         """
         Iterate over items with a progress bar.
@@ -299,9 +297,7 @@ class ProgressIndicator:
             print()  # Newline after completion
 
     def download_progress(
-        self,
-        total_bytes: int,
-        description: str = "Downloading"
+        self, total_bytes: int, description: str = "Downloading"
     ) -> "DownloadTracker":
         """
         Create a download progress tracker.
@@ -315,9 +311,7 @@ class ProgressIndicator:
         return DownloadTracker(self, total_bytes, description)
 
     def multi_step(
-        self,
-        steps: list[dict[str, str]],
-        title: str = "Operation Progress"
+        self, steps: list[dict[str, str]], title: str = "Operation Progress"
     ) -> "MultiStepTracker":
         """
         Create a multi-step operation tracker.
@@ -388,7 +382,9 @@ class RichOperationHandle:
     def update(self, message: str):
         """Update the progress message."""
         if self._status:
-            self._status.update(f"[bold blue]{self.icon} {self.context.title}[/bold blue] - {message}")
+            self._status.update(
+                f"[bold blue]{self.icon} {self.context.title}[/bold blue] - {message}"
+            )
 
     def log(self, message: str, style: str = ""):
         """Log a message while progress is shown."""
@@ -507,7 +503,7 @@ class DownloadTracker:
                 DownloadColumn(),
                 TransferSpeedColumn(),
                 TimeRemainingColumn(),
-                console=self.indicator.console
+                console=self.indicator.console,
             )
             self._progress.start()
             self._task = self._progress.add_task(self.description, total=self.total_bytes)
@@ -638,7 +634,9 @@ class MultiStepTracker:
         failed = sum(1 for s in self.steps if s.status == "failed")
 
         if failed > 0:
-            self.indicator.print_error(f"Completed {completed}/{len(self.steps)} steps ({failed} failed)")
+            self.indicator.print_error(
+                f"Completed {completed}/{len(self.steps)} steps ({failed} failed)"
+            )
         else:
             self.indicator.print_success(f"Completed {completed}/{len(self.steps)} steps")
 
@@ -661,7 +659,11 @@ def spinner(message: str):
     return get_progress_indicator().spinner(message)
 
 
-def operation(title: str, operation_type: OperationType = OperationType.GENERIC, steps: list[str] | None = None):
+def operation(
+    title: str,
+    operation_type: OperationType = OperationType.GENERIC,
+    steps: list[str] | None = None,
+):
     """Convenience function for operation context manager."""
     return get_progress_indicator().operation(title, operation_type, steps)
 
@@ -703,12 +705,15 @@ if __name__ == "__main__":
 
     # Demo 4: Multi-step tracker
     print("\n4. Multi-step operation:")
-    tracker = progress.multi_step([
-        {"name": "Download", "description": "Downloading package files"},
-        {"name": "Verify", "description": "Verifying checksums"},
-        {"name": "Install", "description": "Installing to system"},
-        {"name": "Configure", "description": "Configuring service"},
-    ], "Package Installation")
+    tracker = progress.multi_step(
+        [
+            {"name": "Download", "description": "Downloading package files"},
+            {"name": "Verify", "description": "Verifying checksums"},
+            {"name": "Install", "description": "Installing to system"},
+            {"name": "Configure", "description": "Configuring service"},
+        ],
+        "Package Installation",
+    )
 
     for i in range(4):
         tracker.start_step(i)

@@ -23,7 +23,7 @@ class TestContextMemory(unittest.TestCase):
 
     def setUp(self):
         """Set up test database before each test"""
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.temp_db.close()
         self.memory = ContextMemory(db_path=self.temp_db.name)
 
@@ -37,20 +37,23 @@ class TestContextMemory(unittest.TestCase):
 
         # Verify tables exist
         import sqlite3
+
         conn = sqlite3.connect(self.temp_db.name)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT name FROM sqlite_master
             WHERE type='table'
             ORDER BY name
-        """)
+        """
+        )
         tables = [row[0] for row in cursor.fetchall()]
 
-        self.assertIn('memory_entries', tables)
-        self.assertIn('patterns', tables)
-        self.assertIn('suggestions', tables)
-        self.assertIn('preferences', tables)
+        self.assertIn("memory_entries", tables)
+        self.assertIn("patterns", tables)
+        self.assertIn("suggestions", tables)
+        self.assertIn("preferences", tables)
 
         conn.close()
 
@@ -62,7 +65,7 @@ class TestContextMemory(unittest.TestCase):
             action="apt install docker-ce",
             result="Success",
             success=True,
-            metadata={"version": "24.0.5"}
+            metadata={"version": "24.0.5"},
         )
 
         entry_id = self.memory.record_interaction(entry)
@@ -78,20 +81,20 @@ class TestContextMemory(unittest.TestCase):
                 category="package",
                 context="Install Docker for container management",
                 action="install docker-ce",
-                result="Success"
+                result="Success",
             ),
             MemoryEntry(
                 category="package",
                 context="Install Docker Compose",
                 action="install docker-compose",
-                result="Success"
+                result="Success",
             ),
             MemoryEntry(
                 category="package",
                 context="Install PostgreSQL",
                 action="install postgresql",
-                result="Success"
-            )
+                result="Success",
+            ),
         ]
 
         for entry in entries:
@@ -102,7 +105,9 @@ class TestContextMemory(unittest.TestCase):
 
         self.assertGreater(len(similar), 0)
         # Should find Docker-related entries
-        docker_entries = [e for e in similar if 'docker' in e.context.lower() or 'docker' in e.action.lower()]
+        docker_entries = [
+            e for e in similar if "docker" in e.context.lower() or "docker" in e.action.lower()
+        ]
         self.assertGreater(len(docker_entries), 0)
 
     def test_pattern_detection(self):
@@ -114,7 +119,7 @@ class TestContextMemory(unittest.TestCase):
                 context=f"Install nginx attempt {i}",
                 action="install nginx",
                 result="Success",
-                success=True
+                success=True,
             )
             self.memory.record_interaction(entry)
 
@@ -124,7 +129,7 @@ class TestContextMemory(unittest.TestCase):
         self.assertGreater(len(patterns), 0)
 
         # Verify pattern contains nginx
-        nginx_patterns = [p for p in patterns if 'nginx' in str(p.actions)]
+        nginx_patterns = [p for p in patterns if "nginx" in str(p.actions)]
         self.assertGreater(len(nginx_patterns), 0)
 
     def test_generate_suggestions_optimization(self):
@@ -136,7 +141,7 @@ class TestContextMemory(unittest.TestCase):
                 context="Development setup",
                 action="git",
                 result="Success",
-                success=True
+                success=True,
             )
             self.memory.record_interaction(entry)
 
@@ -155,7 +160,7 @@ class TestContextMemory(unittest.TestCase):
             context="Install Python package",
             action="pip install broken-package",
             result="Error: Package not found",
-            success=False
+            success=False,
         )
         self.memory.record_interaction(failed_entry)
 
@@ -165,7 +170,7 @@ class TestContextMemory(unittest.TestCase):
             context="Install Python package alternative",
             action="pip install working-package",
             result="Success",
-            success=True
+            success=True,
         )
         self.memory.record_interaction(success_entry)
 
@@ -207,10 +212,7 @@ class TestContextMemory(unittest.TestCase):
         # Record entries to generate suggestions
         for _i in range(4):
             entry = MemoryEntry(
-                category="package",
-                context="Test",
-                action="test-package",
-                result="Success"
+                category="package", context="Test", action="test-package", result="Success"
             )
             self.memory.record_interaction(entry)
 
@@ -235,7 +237,7 @@ class TestContextMemory(unittest.TestCase):
             MemoryEntry(category="package", context="Test 1", action="action1", success=True),
             MemoryEntry(category="package", context="Test 2", action="action2", success=True),
             MemoryEntry(category="config", context="Test 3", action="action3", success=False),
-            MemoryEntry(category="command", context="Test 4", action="action4", success=True)
+            MemoryEntry(category="command", context="Test 4", action="action4", success=True),
         ]
 
         for entry in entries:
@@ -243,27 +245,24 @@ class TestContextMemory(unittest.TestCase):
 
         stats = self.memory.get_statistics()
 
-        self.assertEqual(stats['total_entries'], 4)
-        self.assertIn('by_category', stats)
-        self.assertEqual(stats['by_category']['package'], 2)
-        self.assertEqual(stats['by_category']['config'], 1)
-        self.assertEqual(stats['by_category']['command'], 1)
-        self.assertEqual(stats['success_rate'], 75.0)  # 3 out of 4 successful
+        self.assertEqual(stats["total_entries"], 4)
+        self.assertIn("by_category", stats)
+        self.assertEqual(stats["by_category"]["package"], 2)
+        self.assertEqual(stats["by_category"]["config"], 1)
+        self.assertEqual(stats["by_category"]["command"], 1)
+        self.assertEqual(stats["success_rate"], 75.0)  # 3 out of 4 successful
 
     def test_export_memory(self):
         """Test exporting memory to JSON"""
         # Record some data
         entry = MemoryEntry(
-            category="package",
-            context="Test export",
-            action="test-action",
-            result="Success"
+            category="package", context="Test export", action="test-action", result="Success"
         )
         self.memory.record_interaction(entry)
         self.memory.set_preference("test_pref", "test_value")
 
         # Export
-        export_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+        export_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
         export_file.close()
 
         try:
@@ -275,22 +274,18 @@ class TestContextMemory(unittest.TestCase):
             with open(export_file.name) as f:
                 data = json.load(f)
 
-            self.assertIn('entries', data)
-            self.assertIn('patterns', data)
-            self.assertIn('suggestions', data)
-            self.assertIn('preferences', data)
-            self.assertGreater(len(data['entries']), 0)
+            self.assertIn("entries", data)
+            self.assertIn("patterns", data)
+            self.assertIn("suggestions", data)
+            self.assertIn("preferences", data)
+            self.assertGreater(len(data["entries"]), 0)
 
         finally:
             Path(export_file.name).unlink(missing_ok=True)
 
     def test_memory_entry_creation(self):
         """Test MemoryEntry dataclass creation"""
-        entry = MemoryEntry(
-            category="test",
-            context="test context",
-            action="test action"
-        )
+        entry = MemoryEntry(category="test", context="test context", action="test action")
 
         self.assertIsNotNone(entry.timestamp)
         self.assertEqual(entry.category, "test")
@@ -308,7 +303,7 @@ class TestContextMemory(unittest.TestCase):
         self.assertIn("postgresql", keywords)
         self.assertIn("development", keywords)
         self.assertNotIn("and", keywords)  # Stopword
-        self.assertNotIn("to", keywords)   # Stopword
+        self.assertNotIn("to", keywords)  # Stopword
 
     def test_pattern_confidence_increase(self):
         """Test that pattern confidence increases with frequency"""
@@ -316,10 +311,7 @@ class TestContextMemory(unittest.TestCase):
         action = "install docker"
         for i in range(10):
             entry = MemoryEntry(
-                category="package",
-                context=f"Install Docker {i}",
-                action=action,
-                result="Success"
+                category="package", context=f"Install Docker {i}", action=action, result="Success"
             )
             self.memory.record_interaction(entry)
 
@@ -327,7 +319,7 @@ class TestContextMemory(unittest.TestCase):
 
         if patterns:
             # Find our pattern
-            docker_pattern = next((p for p in patterns if 'docker' in str(p.actions).lower()), None)
+            docker_pattern = next((p for p in patterns if "docker" in str(p.actions).lower()), None)
             if docker_pattern:
                 # Confidence should be high with 10 occurrences
                 self.assertGreater(docker_pattern.confidence, 0.5)
@@ -335,11 +327,7 @@ class TestContextMemory(unittest.TestCase):
     def test_concurrent_pattern_detection(self):
         """Test pattern detection with multiple action types"""
         # Record different actions
-        actions = [
-            ("install nginx", 5),
-            ("install docker", 4),
-            ("configure ssl", 3)
-        ]
+        actions = [("install nginx", 5), ("install docker", 4), ("configure ssl", 3)]
 
         for action, count in actions:
             for i in range(count):
@@ -347,7 +335,7 @@ class TestContextMemory(unittest.TestCase):
                     category="package",
                     context=f"{action} attempt {i}",
                     action=action,
-                    result="Success"
+                    result="Success",
                 )
                 self.memory.record_interaction(entry)
 
@@ -361,10 +349,7 @@ class TestContextMemory(unittest.TestCase):
         # Record same scenario multiple times
         for _i in range(5):
             entry = MemoryEntry(
-                category="package",
-                context="Test",
-                action="repeated-action",
-                result="Success"
+                category="package", context="Test", action="repeated-action", result="Success"
             )
             self.memory.record_interaction(entry)
 
@@ -386,11 +371,7 @@ class TestMemoryEntry(unittest.TestCase):
 
     def test_default_values(self):
         """Test default values are set correctly"""
-        entry = MemoryEntry(
-            category="test",
-            context="context",
-            action="action"
-        )
+        entry = MemoryEntry(category="test", context="context", action="action")
 
         self.assertIsNotNone(entry.timestamp)
         self.assertTrue(entry.success)
@@ -401,12 +382,7 @@ class TestMemoryEntry(unittest.TestCase):
     def test_custom_metadata(self):
         """Test custom metadata handling"""
         metadata = {"key": "value", "number": 42}
-        entry = MemoryEntry(
-            category="test",
-            context="context",
-            action="action",
-            metadata=metadata
-        )
+        entry = MemoryEntry(category="test", context="context", action="action", metadata=metadata)
 
         self.assertEqual(entry.metadata, metadata)
 
@@ -416,7 +392,7 @@ class TestIntegration(unittest.TestCase):
 
     def setUp(self):
         """Set up test database"""
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.temp_db.close()
         self.memory = ContextMemory(db_path=self.temp_db.name)
 
@@ -433,7 +409,7 @@ class TestIntegration(unittest.TestCase):
                 context="Setting up development environment",
                 action="install python3-dev",
                 result="Success",
-                success=True
+                success=True,
             )
             self.memory.record_interaction(entry)
 
@@ -456,11 +432,11 @@ class TestIntegration(unittest.TestCase):
 
         # 6. Get statistics
         stats = self.memory.get_statistics()
-        self.assertEqual(stats['total_entries'], 5)
-        self.assertEqual(stats['success_rate'], 100.0)
+        self.assertEqual(stats["total_entries"], 5)
+        self.assertEqual(stats["success_rate"], 100.0)
 
         # 7. Export everything
-        export_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+        export_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
         export_file.close()
 
         try:

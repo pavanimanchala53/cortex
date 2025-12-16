@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from cortex.coordinator import (
     InstallationCoordinator,
@@ -45,7 +45,7 @@ class TestInstallationCoordinator(unittest.TestCase):
     def test_from_plan_initialization(self):
         plan = [
             {"command": "echo 1", "description": "First step"},
-            {"command": "echo 2", "rollback": "echo rollback"}
+            {"command": "echo 2", "rollback": "echo rollback"},
         ]
 
         coordinator = InstallationCoordinator.from_plan(plan)
@@ -71,7 +71,7 @@ class TestInstallationCoordinator(unittest.TestCase):
         with self.assertRaises(ValueError):
             InstallationCoordinator(commands, descriptions)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_single_success(self, mock_run):
         mock_result = Mock()
         mock_result.returncode = 0
@@ -86,7 +86,7 @@ class TestInstallationCoordinator(unittest.TestCase):
         self.assertEqual(len(result.steps), 1)
         self.assertEqual(result.steps[0].status, StepStatus.SUCCESS)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_single_failure(self, mock_run):
         mock_result = Mock()
         mock_result.returncode = 1
@@ -101,7 +101,7 @@ class TestInstallationCoordinator(unittest.TestCase):
         self.assertEqual(result.failed_step, 0)
         self.assertEqual(result.steps[0].status, StepStatus.FAILED)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_multiple_success(self, mock_run):
         mock_result = Mock()
         mock_result.returncode = 0
@@ -116,10 +116,10 @@ class TestInstallationCoordinator(unittest.TestCase):
         self.assertEqual(len(result.steps), 3)
         self.assertTrue(all(s.status == StepStatus.SUCCESS for s in result.steps))
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_stop_on_error(self, mock_run):
         def side_effect(*args, **kwargs):
-            cmd = args[0] if args else kwargs.get('shell')
+            cmd = args[0] if args else kwargs.get("shell")
             if "fail" in str(cmd):
                 result = Mock()
                 result.returncode = 1
@@ -135,10 +135,7 @@ class TestInstallationCoordinator(unittest.TestCase):
 
         mock_run.side_effect = side_effect
 
-        coordinator = InstallationCoordinator(
-            ["echo 1", "fail", "echo 3"],
-            stop_on_error=True
-        )
+        coordinator = InstallationCoordinator(["echo 1", "fail", "echo 3"], stop_on_error=True)
         result = coordinator.execute()
 
         self.assertFalse(result.success)
@@ -147,10 +144,10 @@ class TestInstallationCoordinator(unittest.TestCase):
         self.assertEqual(result.steps[1].status, StepStatus.FAILED)
         self.assertEqual(result.steps[2].status, StepStatus.SKIPPED)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_execute_continue_on_error(self, mock_run):
         def side_effect(*args, **kwargs):
-            cmd = args[0] if args else kwargs.get('shell')
+            cmd = args[0] if args else kwargs.get("shell")
             if "fail" in str(cmd):
                 result = Mock()
                 result.returncode = 1
@@ -166,10 +163,7 @@ class TestInstallationCoordinator(unittest.TestCase):
 
         mock_run.side_effect = side_effect
 
-        coordinator = InstallationCoordinator(
-            ["echo 1", "fail", "echo 3"],
-            stop_on_error=False
-        )
+        coordinator = InstallationCoordinator(["echo 1", "fail", "echo 3"], stop_on_error=False)
         result = coordinator.execute()
 
         self.assertFalse(result.success)
@@ -177,7 +171,7 @@ class TestInstallationCoordinator(unittest.TestCase):
         self.assertEqual(result.steps[1].status, StepStatus.FAILED)
         self.assertEqual(result.steps[2].status, StepStatus.SUCCESS)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_timeout_handling(self, mock_run):
         mock_run.side_effect = Exception("Timeout")
 
@@ -193,17 +187,14 @@ class TestInstallationCoordinator(unittest.TestCase):
         def callback(current, total, step):
             callback_calls.append((current, total, step.command))
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_result = Mock()
             mock_result.returncode = 0
             mock_result.stdout = "success"
             mock_result.stderr = ""
             mock_run.return_value = mock_result
 
-            coordinator = InstallationCoordinator(
-                ["echo 1", "echo 2"],
-                progress_callback=callback
-            )
+            coordinator = InstallationCoordinator(["echo 1", "echo 2"], progress_callback=callback)
             coordinator.execute()
 
         self.assertEqual(len(callback_calls), 2)
@@ -211,21 +202,18 @@ class TestInstallationCoordinator(unittest.TestCase):
         self.assertEqual(callback_calls[1], (2, 2, "echo 2"))
 
     def test_log_file(self):
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.log') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".log") as f:
             log_file = f.name
 
         try:
-            with patch('subprocess.run') as mock_run:
+            with patch("subprocess.run") as mock_run:
                 mock_result = Mock()
                 mock_result.returncode = 0
                 mock_result.stdout = "success"
                 mock_result.stderr = ""
                 mock_run.return_value = mock_result
 
-                coordinator = InstallationCoordinator(
-                    ["echo test"],
-                    log_file=log_file
-                )
+                coordinator = InstallationCoordinator(["echo test"], log_file=log_file)
                 coordinator.execute()
 
             self.assertTrue(os.path.exists(log_file))
@@ -236,7 +224,7 @@ class TestInstallationCoordinator(unittest.TestCase):
             if os.path.exists(log_file):
                 os.unlink(log_file)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_rollback(self, mock_run):
         mock_result = Mock()
         mock_result.returncode = 1
@@ -244,17 +232,14 @@ class TestInstallationCoordinator(unittest.TestCase):
         mock_result.stderr = "error"
         mock_run.return_value = mock_result
 
-        coordinator = InstallationCoordinator(
-            ["fail"],
-            enable_rollback=True
-        )
+        coordinator = InstallationCoordinator(["fail"], enable_rollback=True)
         coordinator.add_rollback_command("echo rollback")
         result = coordinator.execute()
 
         self.assertFalse(result.success)
         self.assertGreaterEqual(mock_run.call_count, 2)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_verify_installation(self, mock_run):
         mock_result = Mock()
         mock_result.returncode = 0
@@ -270,7 +255,7 @@ class TestInstallationCoordinator(unittest.TestCase):
         self.assertTrue(verify_results["docker --version"])
 
     def test_get_summary(self):
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_result = Mock()
             mock_result.returncode = 0
             mock_result.stdout = "success"
@@ -288,11 +273,11 @@ class TestInstallationCoordinator(unittest.TestCase):
             self.assertEqual(summary["skipped"], 0)
 
     def test_export_log(self):
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             export_file = f.name
 
         try:
-            with patch('subprocess.run') as mock_run:
+            with patch("subprocess.run") as mock_run:
                 mock_result = Mock()
                 mock_result.returncode = 0
                 mock_result.stdout = "success"
@@ -306,6 +291,7 @@ class TestInstallationCoordinator(unittest.TestCase):
             self.assertTrue(os.path.exists(export_file))
 
             import json
+
             with open(export_file) as f:
                 data = json.load(f)
                 self.assertIn("total_steps", data)
@@ -314,7 +300,7 @@ class TestInstallationCoordinator(unittest.TestCase):
             if os.path.exists(export_file):
                 os.unlink(export_file)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_step_timing(self, mock_run):
         mock_result = Mock()
         mock_result.returncode = 0
@@ -335,7 +321,7 @@ class TestInstallationCoordinator(unittest.TestCase):
 
 class TestInstallDocker(unittest.TestCase):
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_install_docker_success(self, mock_run):
         mock_result = Mock()
         mock_result.returncode = 0
@@ -348,7 +334,7 @@ class TestInstallDocker(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(len(result.steps), 10)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_install_docker_failure(self, mock_run):
         mock_result = Mock()
         mock_result.returncode = 1
@@ -372,5 +358,5 @@ class TestInstallationPlans(unittest.TestCase):
         self.assertTrue(any("rollback" in step for step in plan))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -36,6 +36,7 @@ try:
         TimeRemainingColumn,
     )
     from rich.table import Table
+
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -43,6 +44,7 @@ except ImportError:
 
 try:
     from plyer import notification as plyer_notification
+
     PLYER_AVAILABLE = True
 except ImportError:
     PLYER_AVAILABLE = False
@@ -50,6 +52,7 @@ except ImportError:
 
 class StageStatus(Enum):
     """Status of a progress stage."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -60,6 +63,7 @@ class StageStatus(Enum):
 @dataclass
 class ProgressStage:
     """Represents a single stage in a multi-stage operation."""
+
     name: str
     status: StageStatus = StageStatus.PENDING
     progress: float = 0.0  # 0.0 to 1.0
@@ -110,12 +114,14 @@ class ProgressTracker:
     - Background operation support
     """
 
-    def __init__(self,
-                 operation_name: str,
-                 enable_notifications: bool = True,
-                 notification_on_complete: bool = True,
-                 notification_on_error: bool = True,
-                 console: Any | None = None):
+    def __init__(
+        self,
+        operation_name: str,
+        enable_notifications: bool = True,
+        notification_on_complete: bool = True,
+        notification_on_error: bool = True,
+        console: Any | None = None,
+    ):
         """
         Initialize progress tracker.
 
@@ -188,8 +194,9 @@ class ProgressTracker:
             stage.status = StageStatus.IN_PROGRESS
             stage.start_time = time.time()
 
-    def update_stage_progress(self, stage_index: int, progress: float = None,
-                             processed_bytes: int = None):
+    def update_stage_progress(
+        self, stage_index: int, progress: float = None, processed_bytes: int = None
+    ):
         """
         Update progress for a specific stage.
 
@@ -426,10 +433,7 @@ class ProgressTracker:
         # Complete any in-progress stages
         for stage in self.stages:
             if stage.status == StageStatus.IN_PROGRESS:
-                self.complete_stage(
-                    self.stages.index(stage),
-                    error=None if success else message
-                )
+                self.complete_stage(self.stages.index(stage), error=None if success else message)
 
         # Final display
         self.display_progress()
@@ -456,13 +460,11 @@ class ProgressTracker:
             if success and self.notification_on_complete:
                 self._send_notification(
                     f"{self.operation_name} Complete",
-                    f"Finished in {self._format_duration(total_time)}"
+                    f"Finished in {self._format_duration(total_time)}",
                 )
             elif not success and self.notification_on_error:
                 self._send_notification(
-                    f"{self.operation_name} Failed",
-                    message or "Operation failed",
-                    timeout=10
+                    f"{self.operation_name} Failed", message or "Operation failed", timeout=10
                 )
 
     def cancel(self, message: str = "Cancelled by user"):
@@ -497,11 +499,7 @@ class ProgressTracker:
 
         # Send notification
         if self.enable_notifications:
-            self._send_notification(
-                f"{self.operation_name} Cancelled",
-                message,
-                timeout=5
-            )
+            self._send_notification(f"{self.operation_name} Cancelled", message, timeout=5)
 
     def _send_notification(self, title: str, message: str, timeout: int = 5):
         """
@@ -517,10 +515,7 @@ class ProgressTracker:
 
         try:
             plyer_notification.notify(
-                title=title,
-                message=message,
-                app_name="Cortex Linux",
-                timeout=timeout
+                title=title, message=message, app_name="Cortex Linux", timeout=timeout
             )
         except Exception:
             # Silently fail if notifications aren't supported
@@ -563,7 +558,9 @@ class RichProgressTracker(ProgressTracker):
 
     def __init__(self, *args, **kwargs):
         if not RICH_AVAILABLE:
-            raise ImportError("rich library is required for RichProgressTracker. Install with: pip install rich")
+            raise ImportError(
+                "rich library is required for RichProgressTracker. Install with: pip install rich"
+            )
         super().__init__(*args, **kwargs)
         self.progress_obj: Progress | None = None
         self.live: Live | None = None
@@ -584,9 +581,7 @@ class RichProgressTracker(ProgressTracker):
         # Add tasks for each stage
         for i, stage in enumerate(self.stages):
             task_id = self.progress_obj.add_task(
-                stage.name,
-                total=100,
-                visible=(i == 0)  # Only show first stage initially
+                stage.name, total=100, visible=(i == 0)  # Only show first stage initially
             )
             self.task_ids[i] = task_id
 
@@ -605,8 +600,9 @@ class RichProgressTracker(ProgressTracker):
             task_id = self.task_ids[stage_index]
             self.progress_obj.update(task_id, visible=True)
 
-    def update_stage_progress(self, stage_index: int, progress: float = None,
-                             processed_bytes: int = None):
+    def update_stage_progress(
+        self, stage_index: int, progress: float = None, processed_bytes: int = None
+    ):
         """Update stage progress and refresh progress bar."""
         super().update_stage_progress(stage_index, progress, processed_bytes)
 
@@ -622,14 +618,16 @@ class RichProgressTracker(ProgressTracker):
         if self.progress_obj and stage_index in self.task_ids:
             task_id = self.task_ids[stage_index]
             if error:
-                self.progress_obj.update(task_id, description=f"[red]{self.stages[stage_index].name} (failed)[/red]")
+                self.progress_obj.update(
+                    task_id, description=f"[red]{self.stages[stage_index].name} (failed)[/red]"
+                )
             else:
                 self.progress_obj.update(task_id, completed=100)
 
 
-async def run_with_progress(tracker: ProgressTracker,
-                            operation_func: Callable,
-                            *args, **kwargs) -> Any:
+async def run_with_progress(
+    tracker: ProgressTracker, operation_func: Callable, *args, **kwargs
+) -> Any:
     """
     Run an async operation with progress tracking.
 
@@ -714,16 +712,12 @@ async def example_installation(tracker: ProgressTracker):
 
 async def main():
     """Demo of progress tracking."""
-    tracker = ProgressTracker(
-        operation_name="Installing PostgreSQL",
-        enable_notifications=True
-    )
+    tracker = ProgressTracker(operation_name="Installing PostgreSQL", enable_notifications=True)
 
     await run_with_progress(tracker, example_installation)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("Progress Tracker Demo")
     print("=" * 50)
     asyncio.run(main())
-

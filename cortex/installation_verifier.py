@@ -17,6 +17,7 @@ from shutil import which
 
 class VerificationStatus(Enum):
     """Verification result status"""
+
     SUCCESS = "success"
     FAILED = "failed"
     PARTIAL = "partial"
@@ -26,6 +27,7 @@ class VerificationStatus(Enum):
 @dataclass
 class VerificationTest:
     """Individual verification test"""
+
     name: str
     test_type: str  # command, file, service, version
     expected: str
@@ -37,6 +39,7 @@ class VerificationTest:
 @dataclass
 class VerificationResult:
     """Complete verification result"""
+
     package_name: str
     status: VerificationStatus
     tests: list[VerificationTest]
@@ -49,62 +52,62 @@ class InstallationVerifier:
 
     # Common verification patterns for popular packages
     VERIFICATION_PATTERNS = {
-        'nginx': {
-            'command': 'nginx -v',
-            'file': '/usr/sbin/nginx',
-            'service': 'nginx',
-            'version_regex': r'nginx/(\d+\.\d+\.\d+)'
+        "nginx": {
+            "command": "nginx -v",
+            "file": "/usr/sbin/nginx",
+            "service": "nginx",
+            "version_regex": r"nginx/(\d+\.\d+\.\d+)",
         },
-        'apache2': {
-            'command': 'apache2 -v',
-            'file': '/usr/sbin/apache2',
-            'service': 'apache2',
-            'version_regex': r'Apache/(\d+\.\d+\.\d+)'
+        "apache2": {
+            "command": "apache2 -v",
+            "file": "/usr/sbin/apache2",
+            "service": "apache2",
+            "version_regex": r"Apache/(\d+\.\d+\.\d+)",
         },
-        'postgresql': {
-            'command': 'psql --version',
-            'file': '/usr/bin/psql',
-            'service': 'postgresql',
-            'version_regex': r'PostgreSQL[^\d]*([\d\.]+)'
+        "postgresql": {
+            "command": "psql --version",
+            "file": "/usr/bin/psql",
+            "service": "postgresql",
+            "version_regex": r"PostgreSQL[^\d]*([\d\.]+)",
         },
-        'mysql-server': {
-            'command': 'mysql --version',
-            'file': '/usr/bin/mysql',
-            'service': 'mysql',
-            'version_regex': r'Ver (\d+\.\d+\.\d+)'
+        "mysql-server": {
+            "command": "mysql --version",
+            "file": "/usr/bin/mysql",
+            "service": "mysql",
+            "version_regex": r"Ver (\d+\.\d+\.\d+)",
         },
-        'docker': {
-            'command': 'docker --version',
-            'file': '/usr/bin/docker',
-            'service': 'docker',
-            'version_regex': r'Docker version (\d+\.\d+\.\d+)'
+        "docker": {
+            "command": "docker --version",
+            "file": "/usr/bin/docker",
+            "service": "docker",
+            "version_regex": r"Docker version (\d+\.\d+\.\d+)",
         },
-        'python3': {
-            'command': 'python3 --version',
-            'file': '/usr/bin/python3',
-            'version_regex': r'Python (\d+\.\d+\.\d+)'
+        "python3": {
+            "command": "python3 --version",
+            "file": "/usr/bin/python3",
+            "version_regex": r"Python (\d+\.\d+\.\d+)",
         },
-        'nodejs': {
-            'command': 'node --version',
-            'file': '/usr/bin/node',
-            'version_regex': r'v(\d+\.\d+\.\d+)'
+        "nodejs": {
+            "command": "node --version",
+            "file": "/usr/bin/node",
+            "version_regex": r"v(\d+\.\d+\.\d+)",
         },
-        'redis-server': {
-            'command': 'redis-server --version',
-            'file': '/usr/bin/redis-server',
-            'service': 'redis-server',
-            'version_regex': r'v=(\d+\.\d+\.\d+)'
+        "redis-server": {
+            "command": "redis-server --version",
+            "file": "/usr/bin/redis-server",
+            "service": "redis-server",
+            "version_regex": r"v=(\d+\.\d+\.\d+)",
         },
-        'git': {
-            'command': 'git --version',
-            'file': '/usr/bin/git',
-            'version_regex': r'git version (\d+\.\d+\.\d+)'
+        "git": {
+            "command": "git --version",
+            "file": "/usr/bin/git",
+            "version_regex": r"git version (\d+\.\d+\.\d+)",
         },
-        'curl': {
-            'command': 'curl --version',
-            'file': '/usr/bin/curl',
-            'version_regex': r'curl (\d+\.\d+\.\d+)'
-        }
+        "curl": {
+            "command": "curl --version",
+            "file": "/usr/bin/curl",
+            "version_regex": r"curl (\d+\.\d+\.\d+)",
+        },
     }
 
     def __init__(self):
@@ -117,10 +120,7 @@ class InstallationVerifier:
         """
         try:
             result = subprocess.run(
-                shlex.split(cmd),
-                capture_output=True,
-                text=True,
-                timeout=timeout
+                shlex.split(cmd), capture_output=True, text=True, timeout=timeout
             )
             return (result.returncode == 0, result.stdout, result.stderr)
         except subprocess.TimeoutExpired:
@@ -140,7 +140,7 @@ class InstallationVerifier:
             expected="Command executes successfully",
             actual=stdout[:100] if success else stderr[:100],
             passed=success,
-            error_message=None if success else f"Command failed: {stderr}"
+            error_message=None if success else f"Command failed: {stderr}",
         )
 
     def _test_file_exists(self, filepath: str) -> VerificationTest:
@@ -153,19 +153,13 @@ class InstallationVerifier:
             actual_location = str(path)
         else:
             # Try to resolve via PATH when direct path lookup fails
-            command_name = (
-                filepath if not path.is_absolute() else path.name
-            )
+            command_name = filepath if not path.is_absolute() else path.name
             resolved_path = which(command_name)
             if resolved_path:
                 exists = True
                 actual_location = resolved_path
 
-        actual_message = (
-            f"Found at {actual_location}"
-            if actual_location
-            else "Not found"
-        )
+        actual_message = f"Found at {actual_location}" if actual_location else "Not found"
 
         return VerificationTest(
             name=f"File exists: {filepath}",
@@ -173,14 +167,12 @@ class InstallationVerifier:
             expected="File exists and is accessible",
             actual=actual_message,
             passed=exists,
-            error_message=None if exists else f"File not found: {filepath}"
+            error_message=None if exists else f"File not found: {filepath}",
         )
 
     def _test_service_status(self, service_name: str) -> VerificationTest:
         """Test if systemd service is active"""
-        success, stdout, stderr = self._run_command(
-            f"systemctl is-active {service_name}"
-        )
+        success, stdout, stderr = self._run_command(f"systemctl is-active {service_name}")
 
         service_state = stdout.strip().lower()
         is_active = success and service_state == "active"
@@ -201,14 +193,11 @@ class InstallationVerifier:
             expected="Service is active/running",
             actual=actual,
             passed=is_active,
-            error_message=error_message
+            error_message=error_message,
         )
 
     def _test_version_match(
-        self,
-        cmd: str,
-        version_regex: str,
-        expected_version: str | None = None
+        self, cmd: str, version_regex: str, expected_version: str | None = None
     ) -> VerificationTest:
         """Test version information"""
         success, stdout, stderr = self._run_command(cmd)
@@ -220,7 +209,7 @@ class InstallationVerifier:
                 expected=expected_version or "Any version",
                 actual="Command failed",
                 passed=False,
-                error_message=stderr
+                error_message=stderr,
             )
 
         # Extract version
@@ -230,7 +219,7 @@ class InstallationVerifier:
         # Check if version matches if expected_version provided
         version_matches = True
         if expected_version:
-            version_matches = (actual_version == expected_version)
+            version_matches = actual_version == expected_version
 
         return VerificationTest(
             name=f"Version check: {cmd}",
@@ -238,14 +227,14 @@ class InstallationVerifier:
             expected=expected_version or "Any version",
             actual=actual_version,
             passed=bool(match) and version_matches,
-            error_message=None if match else "Could not parse version"
+            error_message=None if match else "Could not parse version",
         )
 
     def verify_package(
         self,
         package_name: str,
         expected_version: str | None = None,
-        custom_tests: list[dict] | None = None
+        custom_tests: list[dict] | None = None,
     ) -> VerificationResult:
         """
         Verify package installation
@@ -263,57 +252,49 @@ class InstallationVerifier:
             pattern = self.VERIFICATION_PATTERNS[package_name]
 
             # Test command
-            if 'command' in pattern:
-                tests.append(self._test_command_exists(pattern['command']))
+            if "command" in pattern:
+                tests.append(self._test_command_exists(pattern["command"]))
 
             # Test file
-            if 'file' in pattern:
-                tests.append(self._test_file_exists(pattern['file']))
+            if "file" in pattern:
+                tests.append(self._test_file_exists(pattern["file"]))
 
             # Test service
-            if 'service' in pattern:
-                tests.append(self._test_service_status(pattern['service']))
+            if "service" in pattern:
+                tests.append(self._test_service_status(pattern["service"]))
 
             # Test version
-            if 'version_regex' in pattern and 'command' in pattern:
+            if "version_regex" in pattern and "command" in pattern:
                 tests.append(
                     self._test_version_match(
-                        pattern['command'],
-                        pattern['version_regex'],
-                        expected_version
+                        pattern["command"], pattern["version_regex"], expected_version
                     )
                 )
 
         # Add custom tests
         if custom_tests:
             for test_def in custom_tests:
-                if test_def.get('type') == 'command':
-                    tests.append(
-                        self._test_command_exists(test_def['command'])
-                    )
-                elif test_def.get('type') == 'file':
-                    tests.append(
-                        self._test_file_exists(test_def['path'])
-                    )
-                elif test_def.get('type') == 'service':
-                    tests.append(
-                        self._test_service_status(test_def['name'])
-                    )
+                if test_def.get("type") == "command":
+                    tests.append(self._test_command_exists(test_def["command"]))
+                elif test_def.get("type") == "file":
+                    tests.append(self._test_file_exists(test_def["path"]))
+                elif test_def.get("type") == "service":
+                    tests.append(self._test_service_status(test_def["name"]))
 
         # If no patterns found, try basic checks
         if not tests:
             # Try dpkg query
-            success, stdout, stderr = self._run_command(
-                f"dpkg -l {package_name}"
+            success, stdout, stderr = self._run_command(f"dpkg -l {package_name}")
+            tests.append(
+                VerificationTest(
+                    name=f"Package installed: {package_name}",
+                    test_type="dpkg",
+                    expected="Package found in dpkg",
+                    actual="Installed" if success else "Not found",
+                    passed=success,
+                    error_message=None if success else "Package not in dpkg database",
+                )
             )
-            tests.append(VerificationTest(
-                name=f"Package installed: {package_name}",
-                test_type="dpkg",
-                expected="Package found in dpkg",
-                actual="Installed" if success else "Not found",
-                passed=success,
-                error_message=None if success else "Package not in dpkg database"
-            ))
 
         # Determine overall status
         total_tests = len(tests)
@@ -340,16 +321,13 @@ class InstallationVerifier:
             status=status,
             tests=tests,
             overall_message=message,
-            timestamp=datetime.datetime.now().isoformat()
+            timestamp=datetime.datetime.now().isoformat(),
         )
 
         self.results.append(result)
         return result
 
-    def verify_multiple_packages(
-        self,
-        packages: list[str]
-    ) -> list[VerificationResult]:
+    def verify_multiple_packages(self, packages: list[str]) -> list[VerificationResult]:
         """Verify multiple packages"""
         results = []
 
@@ -365,9 +343,9 @@ class InstallationVerifier:
 
     def print_detailed_results(self, result: VerificationResult) -> None:
         """Print detailed verification results"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print(f"VERIFICATION REPORT: {result.package_name}")
-        print("="*60)
+        print("=" * 60)
         print(f"\nStatus: {result.status.value.upper()}")
         print(f"Time: {result.timestamp}")
         print(f"\n{result.overall_message}\n")
@@ -385,7 +363,7 @@ class InstallationVerifier:
             if test.error_message:
                 print(f"   Error: {test.error_message}")
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
 
     def export_results_json(self, filepath: str) -> None:
         """Export all verification results to JSON"""
@@ -393,15 +371,15 @@ class InstallationVerifier:
 
         for result in self.results:
             result_dict = {
-                'package_name': result.package_name,
-                'status': result.status.value,
-                'overall_message': result.overall_message,
-                'timestamp': result.timestamp,
-                'tests': [asdict(test) for test in result.tests]
+                "package_name": result.package_name,
+                "status": result.status.value,
+                "overall_message": result.overall_message,
+                "timestamp": result.timestamp,
+                "tests": [asdict(test) for test in result.tests],
             }
             results_dict.append(result_dict)
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(results_dict, f, indent=2)
 
         print(f"\n✅ Results exported to {filepath}")
@@ -409,22 +387,22 @@ class InstallationVerifier:
     def get_summary(self) -> dict[str, int]:
         """Get summary statistics"""
         summary = {
-            'total': len(self.results),
-            'success': 0,
-            'failed': 0,
-            'partial': 0,
-            'unknown': 0
+            "total": len(self.results),
+            "success": 0,
+            "failed": 0,
+            "partial": 0,
+            "unknown": 0,
         }
 
         for result in self.results:
             if result.status == VerificationStatus.SUCCESS:
-                summary['success'] += 1
+                summary["success"] += 1
             elif result.status == VerificationStatus.FAILED:
-                summary['failed'] += 1
+                summary["failed"] += 1
             elif result.status == VerificationStatus.PARTIAL:
-                summary['partial'] += 1
+                summary["partial"] += 1
             else:
-                summary['unknown'] += 1
+                summary["unknown"] += 1
 
         return summary
 
@@ -434,27 +412,11 @@ if __name__ == "__main__":
     import argparse
     import sys
 
-    parser = argparse.ArgumentParser(
-        description="Verify software package installations"
-    )
-    parser.add_argument(
-        'packages',
-        nargs='+',
-        help='Package names to verify'
-    )
-    parser.add_argument(
-        '--version',
-        help='Expected version to verify against'
-    )
-    parser.add_argument(
-        '--export',
-        help='Export results to JSON file'
-    )
-    parser.add_argument(
-        '--detailed',
-        action='store_true',
-        help='Show detailed test results'
-    )
+    parser = argparse.ArgumentParser(description="Verify software package installations")
+    parser.add_argument("packages", nargs="+", help="Package names to verify")
+    parser.add_argument("--version", help="Expected version to verify against")
+    parser.add_argument("--export", help="Export results to JSON file")
+    parser.add_argument("--detailed", action="store_true", help="Show detailed test results")
 
     args = parser.parse_args()
 
@@ -470,9 +432,9 @@ if __name__ == "__main__":
 
     # Print summary
     summary = verifier.get_summary()
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("VERIFICATION SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print(f"Total packages: {summary['total']}")
     print(f"✅ Success: {summary['success']}")
     print(f"❌ Failed: {summary['failed']}")
@@ -484,4 +446,4 @@ if __name__ == "__main__":
         verifier.export_results_json(args.export)
 
     # Exit with appropriate code
-    sys.exit(0 if summary['failed'] == 0 else 1)
+    sys.exit(0 if summary["failed"] == 0 else 1)

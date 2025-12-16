@@ -36,9 +36,9 @@ class ConfigManager:
     INSTALLATION_TIMEOUT = 300  # seconds for package installation
 
     # Package sources
-    SOURCE_APT = 'apt'
-    SOURCE_PIP = 'pip'
-    SOURCE_NPM = 'npm'
+    SOURCE_APT = "apt"
+    SOURCE_PIP = "pip"
+    SOURCE_NPM = "npm"
     DEFAULT_SOURCES: ClassVar[list[str]] = [SOURCE_APT, SOURCE_PIP, SOURCE_NPM]
 
     def __init__(self, sandbox_executor=None):
@@ -52,8 +52,8 @@ class ConfigManager:
             PermissionError: If directory ownership or permissions cannot be secured
         """
         self.sandbox_executor = sandbox_executor
-        self.cortex_dir = Path.home() / '.cortex'
-        self.preferences_file = self.cortex_dir / 'preferences.yaml'
+        self.cortex_dir = Path.home() / ".cortex"
+        self.preferences_file = self.cortex_dir / "preferences.yaml"
 
         # Ensure .cortex directory exists with secure permissions
         self.cortex_dir.mkdir(mode=0o700, exist_ok=True)
@@ -104,9 +104,7 @@ class ConfigManager:
         except OSError as e:
             if isinstance(e, PermissionError):
                 raise
-            raise PermissionError(
-                f"Failed to enforce security on {directory}: {e}"
-            )
+            raise PermissionError(f"Failed to enforce security on {directory}: {e}")
 
     def detect_apt_packages(self) -> list[dict[str, Any]]:
         """
@@ -119,22 +117,20 @@ class ConfigManager:
 
         try:
             result = subprocess.run(
-                ['dpkg-query', '-W', '-f=${Package}\t${Version}\n'],
+                ["dpkg-query", "-W", "-f=${Package}\t${Version}\n"],
                 capture_output=True,
                 text=True,
-                timeout=self.DETECTION_TIMEOUT
+                timeout=self.DETECTION_TIMEOUT,
             )
 
             if result.returncode == 0:
-                for line in result.stdout.strip().split('\n'):
+                for line in result.stdout.strip().split("\n"):
                     if line.strip():
-                        parts = line.split('\t')
+                        parts = line.split("\t")
                         if len(parts) >= 2:
-                            packages.append({
-                                'name': parts[0],
-                                'version': parts[1],
-                                'source': self.SOURCE_APT
-                            })
+                            packages.append(
+                                {"name": parts[0], "version": parts[1], "source": self.SOURCE_APT}
+                            )
         except (subprocess.TimeoutExpired, FileNotFoundError):
             # Silently handle errors - package manager may not be available
             pass
@@ -151,23 +147,25 @@ class ConfigManager:
         packages = []
 
         # Try pip3 first, then pip
-        for pip_cmd in ['pip3', 'pip']:
+        for pip_cmd in ["pip3", "pip"]:
             try:
                 result = subprocess.run(
-                    [pip_cmd, 'list', '--format=json'],
+                    [pip_cmd, "list", "--format=json"],
                     capture_output=True,
                     text=True,
-                    timeout=self.DETECTION_TIMEOUT
+                    timeout=self.DETECTION_TIMEOUT,
                 )
 
                 if result.returncode == 0:
                     pip_packages = json.loads(result.stdout)
                     for pkg in pip_packages:
-                        packages.append({
-                            'name': pkg['name'],
-                            'version': pkg['version'],
-                            'source': self.SOURCE_PIP
-                        })
+                        packages.append(
+                            {
+                                "name": pkg["name"],
+                                "version": pkg["version"],
+                                "source": self.SOURCE_PIP,
+                            }
+                        )
                     break  # Success, no need to try other pip commands
             except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
                 continue
@@ -185,23 +183,19 @@ class ConfigManager:
 
         try:
             result = subprocess.run(
-                ['npm', 'list', '-g', '--depth=0', '--json'],
+                ["npm", "list", "-g", "--depth=0", "--json"],
                 capture_output=True,
                 text=True,
-                timeout=self.DETECTION_TIMEOUT
+                timeout=self.DETECTION_TIMEOUT,
             )
 
             if result.returncode == 0:
                 npm_data = json.loads(result.stdout)
-                dependencies = npm_data.get('dependencies', {})
+                dependencies = npm_data.get("dependencies", {})
 
                 for name, info in dependencies.items():
-                    version = info.get('version', 'unknown')
-                    packages.append({
-                        'name': name,
-                        'version': version,
-                        'source': self.SOURCE_NPM
-                    })
+                    version = info.get("version", "unknown")
+                    packages.append({"name": name, "version": version, "source": self.SOURCE_NPM})
         except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
             # Silently handle errors - npm may not be installed or global packages unavailable
             pass
@@ -236,11 +230,11 @@ class ConfigManager:
         # Remove duplicates based on name and source (more efficient)
         unique_packages_dict = {}
         for pkg in all_packages:
-            key = (pkg['name'], pkg['source'])
+            key = (pkg["name"], pkg["source"])
             unique_packages_dict[key] = pkg
 
         # Sort by name
-        unique_packages = sorted(unique_packages_dict.values(), key=lambda x: x['name'])
+        unique_packages = sorted(unique_packages_dict.values(), key=lambda x: x["name"])
 
         return unique_packages
 
@@ -252,7 +246,7 @@ class ConfigManager:
             OS version string (e.g., 'ubuntu-24.04')
         """
         try:
-            os_release_path = Path('/etc/os-release')
+            os_release_path = Path("/etc/os-release")
             if not os_release_path.exists():
                 return "unknown"
 
@@ -260,7 +254,7 @@ class ConfigManager:
                 os_release = f.read()
 
             # Extract distribution name and version
-            name_match = re.search(r'ID=([^\n]+)', os_release)
+            name_match = re.search(r"ID=([^\n]+)", os_release)
             version_match = re.search(r'VERSION_ID="?([^"\n]+)"?', os_release)
 
             if name_match and version_match:
@@ -296,16 +290,18 @@ class ConfigManager:
             preferences: Dictionary of preferences to save
         """
         try:
-            with open(self.preferences_file, 'w') as f:
+            with open(self.preferences_file, "w") as f:
                 yaml.safe_dump(preferences, f, default_flow_style=False)
         except Exception as e:
             raise RuntimeError(f"Failed to save preferences: {e}")
 
-    def export_configuration(self,
-                            output_path: str,
-                            include_hardware: bool = True,
-                            include_preferences: bool = True,
-                            package_sources: list[str] | None = None) -> str:
+    def export_configuration(
+        self,
+        output_path: str,
+        include_hardware: bool = True,
+        include_preferences: bool = True,
+        package_sources: list[str] | None = None,
+    ) -> str:
         """
         Export current system configuration to YAML file.
 
@@ -324,40 +320,41 @@ class ConfigManager:
 
         # Build configuration dictionary
         config = {
-            'cortex_version': self.CORTEX_VERSION,
-            'exported_at': datetime.now().isoformat(),
-            'os': self._detect_os_version(),
+            "cortex_version": self.CORTEX_VERSION,
+            "exported_at": datetime.now().isoformat(),
+            "os": self._detect_os_version(),
         }
 
         # Add hardware profile if requested
         if include_hardware:
             try:
                 from hwprofiler import HardwareProfiler
+
                 profiler = HardwareProfiler()
-                config['hardware'] = profiler.profile()
+                config["hardware"] = profiler.profile()
             except Exception as e:
-                config['hardware'] = {'error': f'Failed to detect hardware: {e}'}
+                config["hardware"] = {"error": f"Failed to detect hardware: {e}"}
 
         # Add packages
-        config['packages'] = self.detect_installed_packages(sources=package_sources)
+        config["packages"] = self.detect_installed_packages(sources=package_sources)
 
         # Add preferences if requested
         if include_preferences:
-            config['preferences'] = self._load_preferences()
+            config["preferences"] = self._load_preferences()
 
         # Add environment variables (selected safe ones)
-        config['environment_variables'] = {}
-        safe_env_vars = ['LANG', 'LANGUAGE', 'LC_ALL', 'PATH', 'SHELL']
+        config["environment_variables"] = {}
+        safe_env_vars = ["LANG", "LANGUAGE", "LC_ALL", "PATH", "SHELL"]
         for var in safe_env_vars:
             if var in os.environ:
-                config['environment_variables'][var] = os.environ[var]
+                config["environment_variables"][var] = os.environ[var]
 
         # Write to file
         try:
             output_path_obj = Path(output_path)
             output_path_obj.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(output_path_obj, 'w') as f:
+            with open(output_path_obj, "w") as f:
                 yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
 
             return f"Configuration exported successfully to {output_path}"
@@ -375,46 +372,57 @@ class ConfigManager:
             Tuple of (is_compatible, reason_if_not)
         """
         # Check required fields
-        if 'cortex_version' not in config:
+        if "cortex_version" not in config:
             return False, "Missing cortex_version field in configuration"
 
-        if 'os' not in config:
+        if "os" not in config:
             return False, "Missing os field in configuration"
 
-        if 'packages' not in config:
+        if "packages" not in config:
             return False, "Missing packages field in configuration"
 
         # Check cortex version compatibility
-        config_version = config['cortex_version']
+        config_version = config["cortex_version"]
         current_version = self.CORTEX_VERSION
 
         # Parse versions (simple major.minor.patch comparison)
         try:
-            config_parts = [int(x) for x in config_version.split('.')]
-            current_parts = [int(x) for x in current_version.split('.')]
+            config_parts = [int(x) for x in config_version.split(".")]
+            current_parts = [int(x) for x in current_version.split(".")]
 
             # Major version must match
             if config_parts[0] != current_parts[0]:
-                return False, f"Incompatible major version: config={config_version}, current={current_version}"
+                return (
+                    False,
+                    f"Incompatible major version: config={config_version}, current={current_version}",
+                )
 
             # Minor version: current should be >= config
             if current_parts[1] < config_parts[1]:
-                return False, f"Configuration requires newer Cortex version: {config_version} > {current_version}"
+                return (
+                    False,
+                    f"Configuration requires newer Cortex version: {config_version} > {current_version}",
+                )
         except Exception:
             # If version parsing fails, be lenient
             pass
 
         # Check OS compatibility (warn but allow)
-        config_os = config.get('os', 'unknown')
+        config_os = config.get("os", "unknown")
         current_os = self._detect_os_version()
 
-        if config_os != current_os and config_os != 'unknown' and current_os != 'unknown':
+        if config_os != current_os and config_os != "unknown" and current_os != "unknown":
             # Don't fail, just warn in the return message
-            return True, f"Warning: OS mismatch (config={config_os}, current={current_os}). Proceed with caution."
+            return (
+                True,
+                f"Warning: OS mismatch (config={config_os}, current={current_os}). Proceed with caution.",
+            )
 
         return True, None
 
-    def _categorize_package(self, pkg: dict[str, Any], current_pkg_map: dict[tuple[str, str], str]) -> tuple[str, dict[str, Any] | None]:
+    def _categorize_package(
+        self, pkg: dict[str, Any], current_pkg_map: dict[tuple[str, str], str]
+    ) -> tuple[str, dict[str, Any] | None]:
         """
         Categorize a package as install, upgrade, downgrade, or already installed.
 
@@ -427,32 +435,32 @@ class ConfigManager:
             'install', 'upgrade', 'downgrade', 'already_installed', 'skip'
             package_data is the modified package dict (with current_version if applicable)
         """
-        name = pkg.get('name')
-        version = pkg.get('version')
-        source = pkg.get('source')
+        name = pkg.get("name")
+        version = pkg.get("version")
+        source = pkg.get("source")
 
         if not name or not source:
-            return 'skip', None
+            return "skip", None
 
         key = (name, source)
 
         if key not in current_pkg_map:
-            return 'install', pkg
+            return "install", pkg
 
         current_version = current_pkg_map[key]
         if current_version == version:
-            return 'already_installed', pkg
+            return "already_installed", pkg
 
         # Compare versions
         try:
-            pkg_with_version = {**pkg, 'current_version': current_version}
+            pkg_with_version = {**pkg, "current_version": current_version}
             if self._compare_versions(current_version, version) < 0:
-                return 'upgrade', pkg_with_version
+                return "upgrade", pkg_with_version
             else:
-                return 'downgrade', pkg_with_version
+                return "downgrade", pkg_with_version
         except Exception:
             # If comparison fails, treat as upgrade
-            return 'upgrade', {**pkg, 'current_version': current_version}
+            return "upgrade", {**pkg, "current_version": current_version}
 
     def diff_configuration(self, config: dict[str, Any]) -> dict[str, Any]:
         """
@@ -465,51 +473,45 @@ class ConfigManager:
             Dictionary with differences
         """
         diff = {
-            'packages_to_install': [],
-            'packages_to_upgrade': [],
-            'packages_to_downgrade': [],
-            'packages_already_installed': [],
-            'preferences_changed': {},
-            'warnings': []
+            "packages_to_install": [],
+            "packages_to_upgrade": [],
+            "packages_to_downgrade": [],
+            "packages_already_installed": [],
+            "preferences_changed": {},
+            "warnings": [],
         }
 
         # Get current packages
         current_packages = self.detect_installed_packages()
-        current_pkg_map = {
-            (pkg['name'], pkg['source']): pkg['version']
-            for pkg in current_packages
-        }
+        current_pkg_map = {(pkg["name"], pkg["source"]): pkg["version"] for pkg in current_packages}
 
         # Compare packages from config
-        config_packages = config.get('packages', [])
+        config_packages = config.get("packages", [])
         for pkg in config_packages:
             category, pkg_data = self._categorize_package(pkg, current_pkg_map)
 
-            if category == 'skip':
-                diff['warnings'].append(f"Malformed package entry skipped: {pkg}")
-            elif category == 'install':
-                diff['packages_to_install'].append(pkg_data)
-            elif category == 'upgrade':
-                diff['packages_to_upgrade'].append(pkg_data)
-            elif category == 'downgrade':
-                diff['packages_to_downgrade'].append(pkg_data)
-            elif category == 'already_installed':
-                diff['packages_already_installed'].append(pkg_data)
+            if category == "skip":
+                diff["warnings"].append(f"Malformed package entry skipped: {pkg}")
+            elif category == "install":
+                diff["packages_to_install"].append(pkg_data)
+            elif category == "upgrade":
+                diff["packages_to_upgrade"].append(pkg_data)
+            elif category == "downgrade":
+                diff["packages_to_downgrade"].append(pkg_data)
+            elif category == "already_installed":
+                diff["packages_already_installed"].append(pkg_data)
 
         # Compare preferences
         current_prefs = self._load_preferences()
-        config_prefs = config.get('preferences', {})
+        config_prefs = config.get("preferences", {})
 
         for key, value in config_prefs.items():
             if key not in current_prefs or current_prefs[key] != value:
-                diff['preferences_changed'][key] = {
-                    'current': current_prefs.get(key),
-                    'new': value
-                }
+                diff["preferences_changed"][key] = {"current": current_prefs.get(key), "new": value}
 
         # Add warnings
-        if diff['packages_to_downgrade']:
-            diff['warnings'].append(
+        if diff["packages_to_downgrade"]:
+            diff["warnings"].append(
                 f"Warning: {len(diff['packages_to_downgrade'])} packages will be downgraded"
             )
 
@@ -528,6 +530,7 @@ class ConfigManager:
         """
         try:
             from packaging import version
+
             v1 = version.parse(version1)
             v2 = version.parse(version2)
             if v1 < v2:
@@ -575,8 +578,8 @@ class ConfigManager:
             be handled correctly. Prefer using packaging.version when available.
         """
         # Simple version comparison (extract numeric parts)
-        v1_parts = re.findall(r'\d+', version1)
-        v2_parts = re.findall(r'\d+', version2)
+        v1_parts = re.findall(r"\d+", version1)
+        v2_parts = re.findall(r"\d+", version2)
 
         # Handle case where no numeric parts found
         if not v1_parts and not v2_parts:
@@ -584,12 +587,12 @@ class ConfigManager:
         if not v1_parts:
             return -1  # version1 has no numeric parts, consider it less
         if not v2_parts:
-            return 1   # version2 has no numeric parts, consider it greater
+            return 1  # version2 has no numeric parts, consider it greater
 
         # Pad to same length
         max_len = max(len(v1_parts), len(v2_parts))
-        v1_parts += ['0'] * (max_len - len(v1_parts))
-        v2_parts += ['0'] * (max_len - len(v2_parts))
+        v1_parts += ["0"] * (max_len - len(v1_parts))
+        v2_parts += ["0"] * (max_len - len(v2_parts))
 
         for p1, p2 in zip(v1_parts, v2_parts):
             n1, n2 = int(p1), int(p2)
@@ -600,11 +603,13 @@ class ConfigManager:
 
         return 0
 
-    def import_configuration(self,
-                            config_path: str,
-                            dry_run: bool = False,
-                            selective: list[str] | None = None,
-                            force: bool = False) -> dict[str, Any]:
+    def import_configuration(
+        self,
+        config_path: str,
+        dry_run: bool = False,
+        selective: list[str] | None = None,
+        force: bool = False,
+    ) -> dict[str, Any]:
         """
         Import configuration from YAML file.
 
@@ -637,30 +642,30 @@ class ConfigManager:
         if dry_run:
             diff = self.diff_configuration(config)
             return {
-                'dry_run': True,
-                'diff': diff,
-                'message': 'Dry-run completed. Use import without --dry-run to apply changes.'
+                "dry_run": True,
+                "diff": diff,
+                "message": "Dry-run completed. Use import without --dry-run to apply changes.",
             }
 
         # Determine what to import
         if selective is None:
-            selective = ['packages', 'preferences']
+            selective = ["packages", "preferences"]
 
         summary = {
-            'installed': [],
-            'upgraded': [],
-            'downgraded': [],
-            'failed': [],
-            'skipped': [],
-            'preferences_updated': False
+            "installed": [],
+            "upgraded": [],
+            "downgraded": [],
+            "failed": [],
+            "skipped": [],
+            "preferences_updated": False,
         }
 
         # Import packages
-        if 'packages' in selective:
+        if "packages" in selective:
             self._import_packages(config, summary)
 
         # Import preferences
-        if 'preferences' in selective:
+        if "preferences" in selective:
             self._import_preferences(config, summary)
 
         return summary
@@ -696,25 +701,25 @@ class ConfigManager:
         """
         diff = self.diff_configuration(config)
         packages_to_process = (
-            diff['packages_to_install'] +
-            diff['packages_to_upgrade'] +
-            diff['packages_to_downgrade']
+            diff["packages_to_install"]
+            + diff["packages_to_upgrade"]
+            + diff["packages_to_downgrade"]
         )
 
         for pkg in packages_to_process:
             try:
                 success = self._install_package(pkg)
                 if success:
-                    if pkg in diff['packages_to_install']:
-                        summary['installed'].append(pkg['name'])
-                    elif pkg in diff['packages_to_downgrade']:
-                        summary['downgraded'].append(pkg['name'])
+                    if pkg in diff["packages_to_install"]:
+                        summary["installed"].append(pkg["name"])
+                    elif pkg in diff["packages_to_downgrade"]:
+                        summary["downgraded"].append(pkg["name"])
                     else:
-                        summary['upgraded'].append(pkg['name'])
+                        summary["upgraded"].append(pkg["name"])
                 else:
-                    summary['failed'].append(pkg['name'])
+                    summary["failed"].append(pkg["name"])
             except Exception as e:
-                summary['failed'].append(f"{pkg['name']} ({str(e)})")
+                summary["failed"].append(f"{pkg['name']} ({str(e)})")
 
     def _import_preferences(self, config: dict[str, Any], summary: dict[str, Any]) -> None:
         """
@@ -743,13 +748,13 @@ class ConfigManager:
             Errors during save are caught and added to failed list with details.
             If config has no preferences or they are empty, silently succeeds.
         """
-        config_prefs = config.get('preferences', {})
+        config_prefs = config.get("preferences", {})
         if config_prefs:
             try:
                 self._save_preferences(config_prefs)
-                summary['preferences_updated'] = True
+                summary["preferences_updated"] = True
             except Exception as e:
-                summary['failed'].append(f"preferences ({str(e)})")
+                summary["failed"].append(f"preferences ({str(e)})")
 
     def _validate_package_identifier(self, identifier: str, allow_slash: bool = False) -> bool:
         """
@@ -767,18 +772,18 @@ class ConfigManager:
             bool: True if identifier is safe, False otherwise
         """
         # Reject path-like patterns immediately
-        if identifier.startswith('.') or identifier.startswith('/') or identifier.startswith('~'):
+        if identifier.startswith(".") or identifier.startswith("/") or identifier.startswith("~"):
             return False
-        if '..' in identifier or '/.' in identifier:
+        if ".." in identifier or "/." in identifier:
             return False
 
         # Apply character whitelist with optional slash support
         if allow_slash:
             # Allow exactly one forward slash for NPM scoped packages (@scope/package)
-            return bool(re.match(r'^[a-zA-Z0-9._:@=+\-]+(/[a-zA-Z0-9._\-]+)?$', identifier))
+            return bool(re.match(r"^[a-zA-Z0-9._:@=+\-]+(/[a-zA-Z0-9._\-]+)?$", identifier))
         else:
             # No slashes allowed for versions or non-NPM packages
-            return bool(re.match(r'^[a-zA-Z0-9._:@=+\-]+$', identifier))
+            return bool(re.match(r"^[a-zA-Z0-9._:@=+\-]+$", identifier))
 
     def _install_with_sandbox(self, name: str, version: str | None, source: str) -> bool:
         """
@@ -794,11 +799,17 @@ class ConfigManager:
         """
         try:
             if source == self.SOURCE_APT:
-                command = f"sudo apt-get install -y {name}={version}" if version else f"sudo apt-get install -y {name}"
+                command = (
+                    f"sudo apt-get install -y {name}={version}"
+                    if version
+                    else f"sudo apt-get install -y {name}"
+                )
             elif source == self.SOURCE_PIP:
                 command = f"pip3 install {name}=={version}" if version else f"pip3 install {name}"
             elif source == self.SOURCE_NPM:
-                command = f"npm install -g {name}@{version}" if version else f"npm install -g {name}"
+                command = (
+                    f"npm install -g {name}@{version}" if version else f"npm install -g {name}"
+                )
             else:
                 return False
 
@@ -821,11 +832,19 @@ class ConfigManager:
         """
         try:
             if source == self.SOURCE_APT:
-                cmd = ['sudo', 'apt-get', 'install', '-y', f'{name}={version}' if version else name]
+                cmd = ["sudo", "apt-get", "install", "-y", f"{name}={version}" if version else name]
             elif source == self.SOURCE_PIP:
-                cmd = ['pip3', 'install', f'{name}=={version}'] if version else ['pip3', 'install', name]
+                cmd = (
+                    ["pip3", "install", f"{name}=={version}"]
+                    if version
+                    else ["pip3", "install", name]
+                )
             elif source == self.SOURCE_NPM:
-                cmd = ['npm', 'install', '-g', f'{name}@{version}'] if version else ['npm', 'install', '-g', name]
+                cmd = (
+                    ["npm", "install", "-g", f"{name}@{version}"]
+                    if version
+                    else ["npm", "install", "-g", name]
+                )
             else:
                 return False
 
@@ -844,13 +863,13 @@ class ConfigManager:
         Returns:
             True if successful, False otherwise
         """
-        name = pkg['name']
-        version = pkg.get('version', '')
-        source = pkg['source']
+        name = pkg["name"]
+        version = pkg.get("version", "")
+        source = pkg["source"]
 
         # Validate package identifiers to prevent command injection
         # Allow slash only for NPM package names (for scoped packages like @scope/package)
-        allow_slash = (source == self.SOURCE_NPM)
+        allow_slash = source == self.SOURCE_NPM
         if not self._validate_package_identifier(name, allow_slash=allow_slash):
             return False
         if version and not self._validate_package_identifier(version, allow_slash=False):
@@ -866,34 +885,35 @@ def _setup_argument_parser():
     """Create and configure argument parser for CLI."""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Cortex Configuration Manager')
-    subparsers = parser.add_subparsers(dest='command', help='Command to execute')
+    parser = argparse.ArgumentParser(description="Cortex Configuration Manager")
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
     # Export command
-    export_parser = subparsers.add_parser('export', help='Export system configuration')
-    export_parser.add_argument('--output', '-o', required=True, help='Output file path')
-    export_parser.add_argument('--include-hardware', action='store_true',
-                              help='Include hardware information')
-    export_parser.add_argument('--no-preferences', action='store_true',
-                              help='Exclude user preferences')
-    export_parser.add_argument('--packages-only', action='store_true',
-                              help='Export only packages')
+    export_parser = subparsers.add_parser("export", help="Export system configuration")
+    export_parser.add_argument("--output", "-o", required=True, help="Output file path")
+    export_parser.add_argument(
+        "--include-hardware", action="store_true", help="Include hardware information"
+    )
+    export_parser.add_argument(
+        "--no-preferences", action="store_true", help="Exclude user preferences"
+    )
+    export_parser.add_argument("--packages-only", action="store_true", help="Export only packages")
 
     # Import command
-    import_parser = subparsers.add_parser('import', help='Import configuration')
-    import_parser.add_argument('config_file', help='Configuration file to import')
-    import_parser.add_argument('--dry-run', action='store_true',
-                              help='Preview changes without applying')
-    import_parser.add_argument('--force', action='store_true',
-                              help='Skip compatibility checks')
-    import_parser.add_argument('--packages-only', action='store_true',
-                              help='Import only packages')
-    import_parser.add_argument('--preferences-only', action='store_true',
-                              help='Import only preferences')
+    import_parser = subparsers.add_parser("import", help="Import configuration")
+    import_parser.add_argument("config_file", help="Configuration file to import")
+    import_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without applying"
+    )
+    import_parser.add_argument("--force", action="store_true", help="Skip compatibility checks")
+    import_parser.add_argument("--packages-only", action="store_true", help="Import only packages")
+    import_parser.add_argument(
+        "--preferences-only", action="store_true", help="Import only preferences"
+    )
 
     # Diff command
-    diff_parser = subparsers.add_parser('diff', help='Show configuration differences')
-    diff_parser.add_argument('config_file', help='Configuration file to compare')
+    diff_parser = subparsers.add_parser("diff", help="Show configuration differences")
+    diff_parser.add_argument("config_file", help="Configuration file to compare")
 
     return parser
 
@@ -901,7 +921,7 @@ def _setup_argument_parser():
 def _print_package_list(packages: list[dict[str, Any]], max_display: int = 5) -> None:
     """Print a list of packages with optional truncation."""
     for pkg in packages[:max_display]:
-        if 'current_version' in pkg:
+        if "current_version" in pkg:
             print(f"   - {pkg['name']} ({pkg.get('current_version')} → {pkg['version']})")
         else:
             print(f"   - {pkg['name']} ({pkg['source']})")
@@ -913,28 +933,28 @@ def _print_package_list(packages: list[dict[str, Any]], max_display: int = 5) ->
 def _print_dry_run_results(result: dict[str, Any]) -> None:
     """Print dry-run results in a formatted manner."""
     print("\n🔍 Dry-run results:\n")
-    diff = result['diff']
+    diff = result["diff"]
 
-    if diff['packages_to_install']:
+    if diff["packages_to_install"]:
         print(f"📦 Packages to install: {len(diff['packages_to_install'])}")
-        _print_package_list(diff['packages_to_install'])
+        _print_package_list(diff["packages_to_install"])
 
-    if diff['packages_to_upgrade']:
+    if diff["packages_to_upgrade"]:
         print(f"\n⬆️  Packages to upgrade: {len(diff['packages_to_upgrade'])}")
-        _print_package_list(diff['packages_to_upgrade'])
+        _print_package_list(diff["packages_to_upgrade"])
 
-    if diff['packages_to_downgrade']:
+    if diff["packages_to_downgrade"]:
         print(f"\n⬇️  Packages to downgrade: {len(diff['packages_to_downgrade'])}")
-        _print_package_list(diff['packages_to_downgrade'])
+        _print_package_list(diff["packages_to_downgrade"])
 
-    if diff['preferences_changed']:
+    if diff["preferences_changed"]:
         print(f"\n⚙️  Preferences to change: {len(diff['preferences_changed'])}")
-        for key in diff['preferences_changed']:
+        for key in diff["preferences_changed"]:
             print(f"   - {key}")
 
-    if diff['warnings']:
+    if diff["warnings"]:
         print("\n⚠️  Warnings:")
-        for warning in diff['warnings']:
+        for warning in diff["warnings"]:
             print(f"   {warning}")
 
     print(f"\n{result['message']}")
@@ -944,21 +964,21 @@ def _print_import_results(result: dict[str, Any]) -> None:
     """Print import results in a formatted manner."""
     print("\n✅ Import completed:\n")
 
-    if result['installed']:
+    if result["installed"]:
         print(f"📦 Installed: {len(result['installed'])} packages")
-    if result['upgraded']:
+    if result["upgraded"]:
         print(f"⬆️  Upgraded: {len(result['upgraded'])} packages")
-    if result.get('downgraded'):
+    if result.get("downgraded"):
         print(f"⬇️  Downgraded: {len(result['downgraded'])} packages")
-    if result['failed']:
+    if result["failed"]:
         print(f"❌ Failed: {len(result['failed'])} packages")
-        for pkg in result['failed']:
+        for pkg in result["failed"]:
             print(f"   - {pkg}")
-    if result['preferences_updated']:
+    if result["preferences_updated"]:
         print("⚙️  Preferences updated")
 
 
-def _handle_export_command(manager: 'ConfigManager', args) -> None:
+def _handle_export_command(manager: "ConfigManager", args) -> None:
     """Handle the export command."""
     include_hardware = args.include_hardware
     include_preferences = not args.no_preferences
@@ -970,24 +990,21 @@ def _handle_export_command(manager: 'ConfigManager', args) -> None:
     message = manager.export_configuration(
         output_path=args.output,
         include_hardware=include_hardware,
-        include_preferences=include_preferences
+        include_preferences=include_preferences,
     )
     print(message)
 
 
-def _handle_import_command(manager: 'ConfigManager', args) -> None:
+def _handle_import_command(manager: "ConfigManager", args) -> None:
     """Handle the import command."""
     selective = None
     if args.packages_only:
-        selective = ['packages']
+        selective = ["packages"]
     elif args.preferences_only:
-        selective = ['preferences']
+        selective = ["preferences"]
 
     result = manager.import_configuration(
-        config_path=args.config_file,
-        dry_run=args.dry_run,
-        selective=selective,
-        force=args.force
+        config_path=args.config_file, dry_run=args.dry_run, selective=selective, force=args.force
     )
 
     if args.dry_run:
@@ -996,7 +1013,7 @@ def _handle_import_command(manager: 'ConfigManager', args) -> None:
         _print_import_results(result)
 
 
-def _handle_diff_command(manager: 'ConfigManager', args) -> None:
+def _handle_diff_command(manager: "ConfigManager", args) -> None:
     """Handle the diff command."""
     with open(args.config_file) as f:
         config = yaml.safe_load(f)
@@ -1010,9 +1027,9 @@ def _handle_diff_command(manager: 'ConfigManager', args) -> None:
     print(f"Packages already installed: {len(diff['packages_already_installed'])}")
     print(f"Preferences changed: {len(diff['preferences_changed'])}")
 
-    if diff['warnings']:
+    if diff["warnings"]:
         print("\n⚠️  Warnings:")
-        for warning in diff['warnings']:
+        for warning in diff["warnings"]:
             print(f"   {warning}")
 
 
@@ -1030,16 +1047,16 @@ def main():
     manager = ConfigManager()
 
     try:
-        if args.command == 'export':
+        if args.command == "export":
             _handle_export_command(manager, args)
-        elif args.command == 'import':
+        elif args.command == "import":
             _handle_import_command(manager, args)
-        elif args.command == 'diff':
+        elif args.command == "diff":
             _handle_diff_command(manager, args)
     except Exception as e:
         print(f"❌ Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

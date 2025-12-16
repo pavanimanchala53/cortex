@@ -17,11 +17,13 @@ import yaml
 
 class PreferencesError(Exception):
     """Custom exception for preferences-related errors"""
+
     pass
 
 
 class VerbosityLevel(str, Enum):
     """Verbosity levels for output"""
+
     QUIET = "quiet"
     NORMAL = "normal"
     VERBOSE = "verbose"
@@ -30,6 +32,7 @@ class VerbosityLevel(str, Enum):
 
 class AICreativity(str, Enum):
     """AI creativity/temperature settings"""
+
     CONSERVATIVE = "conservative"
     BALANCED = "balanced"
     CREATIVE = "creative"
@@ -38,6 +41,7 @@ class AICreativity(str, Enum):
 @dataclass
 class ConfirmationSettings:
     """Settings for user confirmations"""
+
     before_install: bool = True
     before_remove: bool = True
     before_upgrade: bool = False
@@ -47,6 +51,7 @@ class ConfirmationSettings:
 @dataclass
 class AutoUpdateSettings:
     """Automatic update settings"""
+
     check_on_start: bool = True
     auto_install: bool = False
     frequency_hours: int = 24
@@ -55,6 +60,7 @@ class AutoUpdateSettings:
 @dataclass
 class AISettings:
     """AI behavior configuration"""
+
     model: str = "claude-sonnet-4"
     creativity: AICreativity = AICreativity.BALANCED
     explain_steps: bool = True
@@ -66,6 +72,7 @@ class AISettings:
 @dataclass
 class PackageSettings:
     """Package management preferences"""
+
     default_sources: list[str] = field(default_factory=lambda: ["official"])
     prefer_latest: bool = False
     auto_cleanup: bool = True
@@ -75,6 +82,7 @@ class PackageSettings:
 @dataclass
 class UserPreferences:
     """Complete user preferences"""
+
     verbosity: VerbosityLevel = VerbosityLevel.NORMAL
     confirmations: ConfirmationSettings = field(default_factory=ConfirmationSettings)
     auto_update: AutoUpdateSettings = field(default_factory=AutoUpdateSettings)
@@ -119,17 +127,17 @@ class PreferencesManager:
 
             # Parse nested structures
             self.preferences = UserPreferences(
-                verbosity=VerbosityLevel(data.get('verbosity', 'normal')),
-                confirmations=ConfirmationSettings(**data.get('confirmations', {})),
-                auto_update=AutoUpdateSettings(**data.get('auto_update', {})),
+                verbosity=VerbosityLevel(data.get("verbosity", "normal")),
+                confirmations=ConfirmationSettings(**data.get("confirmations", {})),
+                auto_update=AutoUpdateSettings(**data.get("auto_update", {})),
                 ai=AISettings(
-                    creativity=AICreativity(data.get('ai', {}).get('creativity', 'balanced')),
-                    **{k: v for k, v in data.get('ai', {}).items() if k != 'creativity'}
+                    creativity=AICreativity(data.get("ai", {}).get("creativity", "balanced")),
+                    **{k: v for k, v in data.get("ai", {}).items() if k != "creativity"},
                 ),
-                packages=PackageSettings(**data.get('packages', {})),
-                theme=data.get('theme', 'default'),
-                language=data.get('language', 'en'),
-                timezone=data.get('timezone', 'UTC')
+                packages=PackageSettings(**data.get("packages", {})),
+                theme=data.get("theme", "default"),
+                language=data.get("language", "en"),
+                timezone=data.get("timezone", "UTC"),
             )
 
             return self.preferences
@@ -143,7 +151,7 @@ class PreferencesManager:
         """Save preferences to YAML file with backup"""
         # Create backup if file exists
         if self.config_path.exists():
-            backup_path = self.config_path.with_suffix('.yaml.bak')
+            backup_path = self.config_path.with_suffix(".yaml.bak")
             shutil.copy2(self.config_path, backup_path)
 
         # Ensure directory exists
@@ -151,23 +159,23 @@ class PreferencesManager:
 
         # Convert to dict
         data = {
-            'verbosity': self.preferences.verbosity.value,
-            'confirmations': asdict(self.preferences.confirmations),
-            'auto_update': asdict(self.preferences.auto_update),
-            'ai': {
+            "verbosity": self.preferences.verbosity.value,
+            "confirmations": asdict(self.preferences.confirmations),
+            "auto_update": asdict(self.preferences.auto_update),
+            "ai": {
                 **asdict(self.preferences.ai),
-                'creativity': self.preferences.ai.creativity.value
+                "creativity": self.preferences.ai.creativity.value,
             },
-            'packages': asdict(self.preferences.packages),
-            'theme': self.preferences.theme,
-            'language': self.preferences.language,
-            'timezone': self.preferences.timezone
+            "packages": asdict(self.preferences.packages),
+            "theme": self.preferences.theme,
+            "language": self.preferences.language,
+            "timezone": self.preferences.timezone,
         }
 
         # Write atomically (write to temp, then rename)
-        temp_path = self.config_path.with_suffix('.yaml.tmp')
+        temp_path = self.config_path.with_suffix(".yaml.tmp")
         try:
-            with open(temp_path, 'w') as f:
+            with open(temp_path, "w") as f:
                 yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
             # Atomic rename
@@ -189,7 +197,7 @@ class PreferencesManager:
         Returns:
             Preference value or default
         """
-        parts = key.split('.')
+        parts = key.split(".")
         obj = self.preferences
 
         try:
@@ -207,7 +215,7 @@ class PreferencesManager:
             key: Dot notation key (e.g., 'ai.model')
             value: Value to set
         """
-        parts = key.split('.')
+        parts = key.split(".")
         obj = self.preferences
 
         # Navigate to parent object
@@ -221,12 +229,12 @@ class PreferencesManager:
         # Type coercion
         if isinstance(current_value, bool):
             if isinstance(value, str):
-                value = value.lower() in ('true', 'yes', '1', 'on')
+                value = value.lower() in ("true", "yes", "1", "on")
         elif isinstance(current_value, int):
             value = int(value)
         elif isinstance(current_value, list):
             if isinstance(value, str):
-                value = [v.strip() for v in value.split(',')]
+                value = [v.strip() for v in value.split(",")]
         elif isinstance(current_value, Enum):
             # Convert string to enum
             enum_class = type(current_value)
@@ -260,7 +268,7 @@ class PreferencesManager:
             errors.append("auto_update.frequency_hours must be at least 1")
 
         # Validate language code
-        valid_languages = ['en', 'es', 'fr', 'de', 'ja', 'zh', 'pt', 'ru']
+        valid_languages = ["en", "es", "fr", "de", "ja", "zh", "pt", "ru"]
         if self.preferences.language not in valid_languages:
             errors.append(f"language must be one of: {', '.join(valid_languages)}")
 
@@ -269,21 +277,21 @@ class PreferencesManager:
     def export_json(self, filepath: Path) -> None:
         """Export preferences to JSON file"""
         data = {
-            'verbosity': self.preferences.verbosity.value,
-            'confirmations': asdict(self.preferences.confirmations),
-            'auto_update': asdict(self.preferences.auto_update),
-            'ai': {
+            "verbosity": self.preferences.verbosity.value,
+            "confirmations": asdict(self.preferences.confirmations),
+            "auto_update": asdict(self.preferences.auto_update),
+            "ai": {
                 **asdict(self.preferences.ai),
-                'creativity': self.preferences.ai.creativity.value
+                "creativity": self.preferences.ai.creativity.value,
             },
-            'packages': asdict(self.preferences.packages),
-            'theme': self.preferences.theme,
-            'language': self.preferences.language,
-            'timezone': self.preferences.timezone,
-            'exported_at': datetime.now().isoformat()
+            "packages": asdict(self.preferences.packages),
+            "theme": self.preferences.theme,
+            "language": self.preferences.language,
+            "timezone": self.preferences.timezone,
+            "exported_at": datetime.now().isoformat(),
         }
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(data, f, indent=2)
 
         print(f"[SUCCESS] Configuration exported to {filepath}")
@@ -294,21 +302,21 @@ class PreferencesManager:
             data = json.load(f)
 
         # Remove metadata
-        data.pop('exported_at', None)
+        data.pop("exported_at", None)
 
         # Update preferences
         self.preferences = UserPreferences(
-            verbosity=VerbosityLevel(data.get('verbosity', 'normal')),
-            confirmations=ConfirmationSettings(**data.get('confirmations', {})),
-            auto_update=AutoUpdateSettings(**data.get('auto_update', {})),
+            verbosity=VerbosityLevel(data.get("verbosity", "normal")),
+            confirmations=ConfirmationSettings(**data.get("confirmations", {})),
+            auto_update=AutoUpdateSettings(**data.get("auto_update", {})),
             ai=AISettings(
-                creativity=AICreativity(data.get('ai', {}).get('creativity', 'balanced')),
-                **{k: v for k, v in data.get('ai', {}).items() if k != 'creativity'}
+                creativity=AICreativity(data.get("ai", {}).get("creativity", "balanced")),
+                **{k: v for k, v in data.get("ai", {}).items() if k != "creativity"},
             ),
-            packages=PackageSettings(**data.get('packages', {})),
-            theme=data.get('theme', 'default'),
-            language=data.get('language', 'en'),
-            timezone=data.get('timezone', 'UTC')
+            packages=PackageSettings(**data.get("packages", {})),
+            theme=data.get("theme", "default"),
+            language=data.get("language", "en"),
+            timezone=data.get("timezone", "UTC"),
         )
 
         self.save()
@@ -317,28 +325,32 @@ class PreferencesManager:
     def get_all_settings(self) -> dict[str, Any]:
         """Get all settings as a flat dictionary"""
         return {
-            'verbosity': self.preferences.verbosity.value,
-            'confirmations': asdict(self.preferences.confirmations),
-            'auto_update': asdict(self.preferences.auto_update),
-            'ai': {
+            "verbosity": self.preferences.verbosity.value,
+            "confirmations": asdict(self.preferences.confirmations),
+            "auto_update": asdict(self.preferences.auto_update),
+            "ai": {
                 **asdict(self.preferences.ai),
-                'creativity': self.preferences.ai.creativity.value
+                "creativity": self.preferences.ai.creativity.value,
             },
-            'packages': asdict(self.preferences.packages),
-            'theme': self.preferences.theme,
-            'language': self.preferences.language,
-            'timezone': self.preferences.timezone
+            "packages": asdict(self.preferences.packages),
+            "theme": self.preferences.theme,
+            "language": self.preferences.language,
+            "timezone": self.preferences.timezone,
         }
 
     def get_config_info(self) -> dict[str, Any]:
         """Get configuration metadata"""
         return {
-            'config_path': str(self.config_path),
-            'config_exists': self.config_path.exists(),
-            'config_size_bytes': self.config_path.stat().st_size if self.config_path.exists() else 0,
-            'last_modified': datetime.fromtimestamp(
-                self.config_path.stat().st_mtime
-            ).isoformat() if self.config_path.exists() else None
+            "config_path": str(self.config_path),
+            "config_exists": self.config_path.exists(),
+            "config_size_bytes": (
+                self.config_path.stat().st_size if self.config_path.exists() else 0
+            ),
+            "last_modified": (
+                datetime.fromtimestamp(self.config_path.stat().st_mtime).isoformat()
+                if self.config_path.exists()
+                else None
+            ),
         }
 
 

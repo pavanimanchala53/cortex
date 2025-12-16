@@ -34,6 +34,7 @@ if os.geteuid() != 0:
 # Try to import BCC (BPF Compiler Collection)
 try:
     from bcc import BPF, PerfSWConfig, PerfType
+
     HAS_BCC = True
 except ImportError:
     HAS_BCC = False
@@ -44,26 +45,27 @@ except ImportError:
 
 # Known inference process names to detect
 INFERENCE_PROCESSES = [
-    "python",          # Most ML frameworks
+    "python",  # Most ML frameworks
     "python3",
-    "ollama",          # Ollama server
-    "ollama_llama_se", # Ollama server (truncated)
-    "llama-server",    # llama.cpp server
-    "vllm",            # vLLM
-    "text-generation", # HuggingFace TGI
-    "tritonserver",    # NVIDIA Triton
-    "torchserve",      # PyTorch Serve
-    "cortex-serve",    # Cortex model server
-    "mlx_lm",          # Apple MLX
-    "exllamav2",       # ExLlamaV2
-    "koboldcpp",       # KoboldCpp
-    "localai",         # LocalAI
+    "ollama",  # Ollama server
+    "ollama_llama_se",  # Ollama server (truncated)
+    "llama-server",  # llama.cpp server
+    "vllm",  # vLLM
+    "text-generation",  # HuggingFace TGI
+    "tritonserver",  # NVIDIA Triton
+    "torchserve",  # PyTorch Serve
+    "cortex-serve",  # Cortex model server
+    "mlx_lm",  # Apple MLX
+    "exllamav2",  # ExLlamaV2
+    "koboldcpp",  # KoboldCpp
+    "localai",  # LocalAI
 ]
 
 
 @dataclass
 class ProcessMetrics:
     """Metrics for a single process."""
+
     pid: int
     comm: str
     gpu_wait_ns: int
@@ -85,6 +87,7 @@ class ProcessMetrics:
 @dataclass
 class GlobalStats:
     """Global scheduler statistics."""
+
     total_inference_procs: int
     total_boosted_ns: int
     detection_count: int
@@ -296,17 +299,19 @@ TRACEPOINT_PROBE(sched, sched_process_exit) {
             except (FileNotFoundError, PermissionError):
                 comm = "<unknown>"
 
-            results.append(ProcessMetrics(
-                pid=pid_val,
-                comm=comm,
-                gpu_wait_ns=metrics.gpu_wait_ns,
-                cpu_compute_ns=metrics.cpu_compute_ns,
-                memory_alloc_mb=metrics.memory_alloc_bytes / (1024 * 1024),
-                context_switches=metrics.context_switches,
-                inference_count=metrics.inference_count,
-                is_inference=bool(metrics.is_inference),
-                priority_boost=metrics.priority_boost
-            ))
+            results.append(
+                ProcessMetrics(
+                    pid=pid_val,
+                    comm=comm,
+                    gpu_wait_ns=metrics.gpu_wait_ns,
+                    cpu_compute_ns=metrics.cpu_compute_ns,
+                    memory_alloc_mb=metrics.memory_alloc_bytes / (1024 * 1024),
+                    context_switches=metrics.context_switches,
+                    inference_count=metrics.inference_count,
+                    is_inference=bool(metrics.is_inference),
+                    priority_boost=metrics.priority_boost,
+                )
+            )
 
         return results
 
@@ -319,7 +324,7 @@ TRACEPOINT_PROBE(sched, sched_process_exit) {
             total_inference_procs=inference_procs,
             total_boosted_ns=sum(m.gpu_wait_ns for m in metrics if m.is_inference),
             detection_count=inference_procs,
-            uptime_seconds=time.time() - self.start_time if self.running else 0
+            uptime_seconds=time.time() - self.start_time if self.running else 0,
         )
 
     def print_status(self):
@@ -342,13 +347,17 @@ TRACEPOINT_PROBE(sched, sched_process_exit) {
         # Sort by inference flag and GPU time
         metrics.sort(key=lambda m: (m.is_inference, m.gpu_wait_ns), reverse=True)
 
-        print(f"{'PID':<8} {'COMM':<20} {'INF':<4} {'GPU%':<6} {'MEM(MB)':<10} {'CTX':<8} {'BOOST':<6}")
+        print(
+            f"{'PID':<8} {'COMM':<20} {'INF':<4} {'GPU%':<6} {'MEM(MB)':<10} {'CTX':<8} {'BOOST':<6}"
+        )
         print("-" * 70)
 
         for m in metrics[:20]:  # Top 20
             inf_flag = "✓" if m.is_inference else ""
-            print(f"{m.pid:<8} {m.comm[:19]:<20} {inf_flag:<4} {m.gpu_ratio:<6.1f} "
-                  f"{m.memory_alloc_mb:<10.1f} {m.context_switches:<8} {m.priority_boost:<6}")
+            print(
+                f"{m.pid:<8} {m.comm[:19]:<20} {inf_flag:<4} {m.gpu_ratio:<6.1f} "
+                f"{m.memory_alloc_mb:<10.1f} {m.context_switches:<8} {m.priority_boost:<6}"
+            )
 
     def run_monitor(self, interval: float = 2.0):
         """Run continuous monitoring."""
@@ -356,7 +365,7 @@ TRACEPOINT_PROBE(sched, sched_process_exit) {
 
         try:
             while self.running:
-                os.system('clear')
+                os.system("clear")
                 self.print_status()
                 time.sleep(interval)
         except KeyboardInterrupt:
@@ -373,13 +382,15 @@ Examples:
     sudo python3 cortex_sched_loader.py status
     sudo python3 cortex_sched_loader.py monitor
     sudo python3 cortex_sched_loader.py stop
-        """
+        """,
     )
 
-    parser.add_argument("command", choices=["start", "stop", "status", "monitor", "json"],
-                        help="Command to execute")
-    parser.add_argument("--interval", type=float, default=2.0,
-                        help="Monitor update interval (seconds)")
+    parser.add_argument(
+        "command", choices=["start", "stop", "status", "monitor", "json"], help="Command to execute"
+    )
+    parser.add_argument(
+        "--interval", type=float, default=2.0, help="Monitor update interval (seconds)"
+    )
 
     args = parser.parse_args()
 
@@ -420,7 +431,7 @@ Examples:
         stats = scheduler.get_global_stats()
         output = {
             "stats": asdict(stats),
-            "processes": [asdict(m) for m in metrics if m.is_inference]
+            "processes": [asdict(m) for m in metrics if m.is_inference],
         }
         print(json.dumps(output, indent=2))
         scheduler.stop()

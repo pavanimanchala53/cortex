@@ -69,18 +69,20 @@ class CommandInterpreter:
         if self.provider == APIProvider.OPENAI:
             try:
                 from openai import OpenAI
+
                 self.client = OpenAI(api_key=self.api_key)
             except ImportError:
                 raise ImportError("OpenAI package not installed. Run: pip install openai")
         elif self.provider == APIProvider.CLAUDE:
             try:
                 from anthropic import Anthropic
+
                 self.client = Anthropic(api_key=self.api_key)
             except ImportError:
                 raise ImportError("Anthropic package not installed. Run: pip install anthropic")
         elif self.provider == APIProvider.OLLAMA:
             # Ollama uses local HTTP API, no special client needed
-            self.ollama_url = os.environ.get('OLLAMA_HOST', 'http://localhost:11434')
+            self.ollama_url = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
             self.client = None  # Will use requests
 
     def _get_system_prompt(self) -> str:
@@ -107,10 +109,10 @@ Example response: {"commands": ["sudo apt update", "sudo apt install -y docker.i
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self._get_system_prompt()},
-                    {"role": "user", "content": user_input}
+                    {"role": "user", "content": user_input},
                 ],
                 temperature=0.3,
-                max_tokens=1000
+                max_tokens=1000,
             )
 
             content = response.choices[0].message.content.strip()
@@ -125,9 +127,7 @@ Example response: {"commands": ["sudo apt update", "sudo apt install -y docker.i
                 max_tokens=1000,
                 temperature=0.3,
                 system=self._get_system_prompt(),
-                messages=[
-                    {"role": "user", "content": user_input}
-                ]
+                messages=[{"role": "user", "content": user_input}],
             )
 
             content = response.content[0].text.strip()
@@ -144,24 +144,22 @@ Example response: {"commands": ["sudo apt update", "sudo apt install -y docker.i
             url = f"{self.ollama_url}/api/generate"
             prompt = f"{self._get_system_prompt()}\n\nUser request: {user_input}"
 
-            data = json.dumps({
-                "model": self.model,
-                "prompt": prompt,
-                "stream": False,
-                "options": {
-                    "temperature": 0.3
+            data = json.dumps(
+                {
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.3},
                 }
-            }).encode('utf-8')
+            ).encode("utf-8")
 
             req = urllib.request.Request(
-                url,
-                data=data,
-                headers={'Content-Type': 'application/json'}
+                url, data=data, headers={"Content-Type": "application/json"}
             )
 
             with urllib.request.urlopen(req, timeout=60) as response:
-                result = json.loads(response.read().decode('utf-8'))
-                content = result.get('response', '').strip()
+                result = json.loads(response.read().decode("utf-8"))
+                content = result.get("response", "").strip()
                 return self._parse_commands(content)
 
         except urllib.error.URLError as e:
@@ -222,7 +220,9 @@ Example response: {"commands": ["sudo apt update", "sudo apt install -y docker.i
         if not user_input or not user_input.strip():
             raise ValueError("User input cannot be empty")
 
-        cache_system_prompt = self._get_system_prompt() + f"\n\n[cortex-cache-validate={bool(validate)}]"
+        cache_system_prompt = (
+            self._get_system_prompt() + f"\n\n[cortex-cache-validate={bool(validate)}]"
+        )
 
         if self.cache is not None:
             cached = self.cache.get_commands(
@@ -265,10 +265,7 @@ Example response: {"commands": ["sudo apt update", "sudo apt install -y docker.i
         return commands
 
     def parse_with_context(
-        self,
-        user_input: str,
-        system_info: dict[str, Any] | None = None,
-        validate: bool = True
+        self, user_input: str, system_info: dict[str, Any] | None = None, validate: bool = True
     ) -> list[str]:
         context = ""
         if system_info:

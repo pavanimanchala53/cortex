@@ -29,18 +29,20 @@ logger = logging.getLogger(__name__)
 
 class TaskType(Enum):
     """Types of tasks that determine LLM routing."""
-    USER_CHAT = "user_chat"                    # General conversation
+
+    USER_CHAT = "user_chat"  # General conversation
     REQUIREMENT_PARSING = "requirement_parsing"  # Understanding user needs
-    SYSTEM_OPERATION = "system_operation"      # Package install, config
-    ERROR_DEBUGGING = "error_debugging"        # Diagnosing failures
-    CODE_GENERATION = "code_generation"        # Writing scripts
+    SYSTEM_OPERATION = "system_operation"  # Package install, config
+    ERROR_DEBUGGING = "error_debugging"  # Diagnosing failures
+    CODE_GENERATION = "code_generation"  # Writing scripts
     DEPENDENCY_RESOLUTION = "dependency_resolution"  # Figuring out deps
-    CONFIGURATION = "configuration"            # System config files
-    TOOL_EXECUTION = "tool_execution"          # Running system tools
+    CONFIGURATION = "configuration"  # System config files
+    TOOL_EXECUTION = "tool_execution"  # Running system tools
 
 
 class LLMProvider(Enum):
     """Supported LLM providers."""
+
     CLAUDE = "claude"
     KIMI_K2 = "kimi_k2"
 
@@ -48,6 +50,7 @@ class LLMProvider(Enum):
 @dataclass
 class LLMResponse:
     """Standardized response from any LLM."""
+
     content: str
     provider: LLMProvider
     model: str
@@ -60,6 +63,7 @@ class LLMResponse:
 @dataclass
 class RoutingDecision:
     """Details about why a specific LLM was chosen."""
+
     provider: LLMProvider
     task_type: TaskType
     reasoning: str
@@ -82,13 +86,13 @@ class LLMRouter:
     # Cost per 1M tokens (estimated, update with actual pricing)
     COSTS = {
         LLMProvider.CLAUDE: {
-            "input": 3.0,   # $3 per 1M input tokens
-            "output": 15.0  # $15 per 1M output tokens
+            "input": 3.0,  # $3 per 1M input tokens
+            "output": 15.0,  # $15 per 1M output tokens
         },
         LLMProvider.KIMI_K2: {
-            "input": 1.0,   # Estimated lower cost
-            "output": 5.0   # Estimated lower cost
-        }
+            "input": 1.0,  # Estimated lower cost
+            "output": 5.0,  # Estimated lower cost
+        },
     }
 
     # Routing rules: TaskType → Preferred LLM
@@ -109,7 +113,7 @@ class LLMRouter:
         kimi_api_key: str | None = None,
         default_provider: LLMProvider = LLMProvider.CLAUDE,
         enable_fallback: bool = True,
-        track_costs: bool = True
+        track_costs: bool = True,
     ):
         """
         Initialize LLM Router.
@@ -139,8 +143,7 @@ class LLMRouter:
 
         if self.kimi_api_key:
             self.kimi_client = OpenAI(
-                api_key=self.kimi_api_key,
-                base_url="https://api.moonshot.ai/v1"
+                api_key=self.kimi_api_key, base_url="https://api.moonshot.ai/v1"
             )
             logger.info("✅ Kimi K2 API client initialized")
         else:
@@ -151,13 +154,11 @@ class LLMRouter:
         self.request_count = 0
         self.provider_stats = {
             LLMProvider.CLAUDE: {"requests": 0, "tokens": 0, "cost": 0.0},
-            LLMProvider.KIMI_K2: {"requests": 0, "tokens": 0, "cost": 0.0}
+            LLMProvider.KIMI_K2: {"requests": 0, "tokens": 0, "cost": 0.0},
         }
 
     def route_task(
-        self,
-        task_type: TaskType,
-        force_provider: LLMProvider | None = None
+        self, task_type: TaskType, force_provider: LLMProvider | None = None
     ) -> RoutingDecision:
         """
         Determine which LLM should handle this task.
@@ -174,7 +175,7 @@ class LLMRouter:
                 provider=force_provider,
                 task_type=task_type,
                 reasoning="Forced by caller",
-                confidence=1.0
+                confidence=1.0,
             )
 
         # Use routing rules
@@ -198,10 +199,7 @@ class LLMRouter:
         reasoning = f"{task_type.value} → {provider.value} (optimal for this task)"
 
         return RoutingDecision(
-            provider=provider,
-            task_type=task_type,
-            reasoning=reasoning,
-            confidence=0.95
+            provider=provider, task_type=task_type, reasoning=reasoning, confidence=0.95
         )
 
     def complete(
@@ -211,7 +209,7 @@ class LLMRouter:
         force_provider: LLMProvider | None = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,
-        tools: list[dict] | None = None
+        tools: list[dict] | None = None,
     ) -> LLMResponse:
         """
         Generate completion using the most appropriate LLM.
@@ -235,13 +233,9 @@ class LLMRouter:
 
         try:
             if routing.provider == LLMProvider.CLAUDE:
-                response = self._complete_claude(
-                    messages, temperature, max_tokens, tools
-                )
+                response = self._complete_claude(messages, temperature, max_tokens, tools)
             else:  # KIMI_K2
-                response = self._complete_kimi(
-                    messages, temperature, max_tokens, tools
-                )
+                response = self._complete_kimi(messages, temperature, max_tokens, tools)
 
             response.latency_seconds = time.time() - start_time
 
@@ -257,7 +251,8 @@ class LLMRouter:
             # Try fallback if enabled
             if self.enable_fallback:
                 fallback_provider = (
-                    LLMProvider.KIMI_K2 if routing.provider == LLMProvider.CLAUDE
+                    LLMProvider.KIMI_K2
+                    if routing.provider == LLMProvider.CLAUDE
                     else LLMProvider.CLAUDE
                 )
                 logger.info(f"🔄 Attempting fallback to {fallback_provider.value}")
@@ -268,7 +263,7 @@ class LLMRouter:
                     force_provider=fallback_provider,
                     temperature=temperature,
                     max_tokens=max_tokens,
-                    tools=tools
+                    tools=tools,
                 )
             else:
                 raise
@@ -278,7 +273,7 @@ class LLMRouter:
         messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
-        tools: list[dict] | None = None
+        tools: list[dict] | None = None,
     ) -> LLMResponse:
         """Generate completion using Claude API."""
         # Extract system message if present
@@ -296,7 +291,7 @@ class LLMRouter:
             "model": "claude-sonnet-4-20250514",
             "max_tokens": max_tokens,
             "temperature": temperature,
-            "messages": user_messages
+            "messages": user_messages,
         }
 
         if system_message:
@@ -311,15 +306,13 @@ class LLMRouter:
         # Extract content
         content = ""
         for block in response.content:
-            if hasattr(block, 'text'):
+            if hasattr(block, "text"):
                 content += block.text
 
         # Calculate cost
         input_tokens = response.usage.input_tokens
         output_tokens = response.usage.output_tokens
-        cost = self._calculate_cost(
-            LLMProvider.CLAUDE, input_tokens, output_tokens
-        )
+        cost = self._calculate_cost(LLMProvider.CLAUDE, input_tokens, output_tokens)
 
         return LLMResponse(
             content=content,
@@ -328,7 +321,7 @@ class LLMRouter:
             tokens_used=input_tokens + output_tokens,
             cost_usd=cost,
             latency_seconds=0.0,  # Set by caller
-            raw_response=response.model_dump() if hasattr(response, 'model_dump') else None
+            raw_response=response.model_dump() if hasattr(response, "model_dump") else None,
         )
 
     def _complete_kimi(
@@ -336,7 +329,7 @@ class LLMRouter:
         messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
-        tools: list[dict] | None = None
+        tools: list[dict] | None = None,
     ) -> LLMResponse:
         """Generate completion using Kimi K2 API."""
         # Kimi K2 recommends temperature=0.6
@@ -347,7 +340,7 @@ class LLMRouter:
             "model": "kimi-k2-instruct",
             "messages": messages,
             "temperature": kimi_temp,
-            "max_tokens": max_tokens
+            "max_tokens": max_tokens,
         }
 
         if tools:
@@ -362,9 +355,7 @@ class LLMRouter:
         # Calculate cost
         input_tokens = response.usage.prompt_tokens
         output_tokens = response.usage.completion_tokens
-        cost = self._calculate_cost(
-            LLMProvider.KIMI_K2, input_tokens, output_tokens
-        )
+        cost = self._calculate_cost(LLMProvider.KIMI_K2, input_tokens, output_tokens)
 
         return LLMResponse(
             content=content,
@@ -373,14 +364,11 @@ class LLMRouter:
             tokens_used=input_tokens + output_tokens,
             cost_usd=cost,
             latency_seconds=0.0,  # Set by caller
-            raw_response=response.model_dump() if hasattr(response, 'model_dump') else None
+            raw_response=response.model_dump() if hasattr(response, "model_dump") else None,
         )
 
     def _calculate_cost(
-        self,
-        provider: LLMProvider,
-        input_tokens: int,
-        output_tokens: int
+        self, provider: LLMProvider, input_tokens: int, output_tokens: int
     ) -> float:
         """Calculate cost in USD for this request."""
         costs = self.COSTS[provider]
@@ -412,14 +400,14 @@ class LLMRouter:
                 "claude": {
                     "requests": self.provider_stats[LLMProvider.CLAUDE]["requests"],
                     "tokens": self.provider_stats[LLMProvider.CLAUDE]["tokens"],
-                    "cost_usd": round(self.provider_stats[LLMProvider.CLAUDE]["cost"], 4)
+                    "cost_usd": round(self.provider_stats[LLMProvider.CLAUDE]["cost"], 4),
                 },
                 "kimi_k2": {
                     "requests": self.provider_stats[LLMProvider.KIMI_K2]["requests"],
                     "tokens": self.provider_stats[LLMProvider.KIMI_K2]["tokens"],
-                    "cost_usd": round(self.provider_stats[LLMProvider.KIMI_K2]["cost"], 4)
-                }
-            }
+                    "cost_usd": round(self.provider_stats[LLMProvider.KIMI_K2]["cost"], 4),
+                },
+            },
         }
 
     def reset_stats(self):
@@ -435,7 +423,7 @@ def complete_task(
     prompt: str,
     task_type: TaskType = TaskType.USER_CHAT,
     system_prompt: str | None = None,
-    **kwargs
+    **kwargs,
 ) -> str:
     """
     Simple interface for one-off completions.
@@ -471,9 +459,9 @@ if __name__ == "__main__":
     response = router.complete(
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "Hello! What can you help me with?"}
+            {"role": "user", "content": "Hello! What can you help me with?"},
         ],
-        task_type=TaskType.USER_CHAT
+        task_type=TaskType.USER_CHAT,
     )
     print(f"Provider: {response.provider.value}")
     print(f"Response: {response.content[:100]}...")
@@ -484,9 +472,9 @@ if __name__ == "__main__":
     response = router.complete(
         messages=[
             {"role": "system", "content": "You are a Linux system administrator."},
-            {"role": "user", "content": "Install CUDA drivers for NVIDIA RTX 4090"}
+            {"role": "user", "content": "Install CUDA drivers for NVIDIA RTX 4090"},
         ],
-        task_type=TaskType.SYSTEM_OPERATION
+        task_type=TaskType.SYSTEM_OPERATION,
     )
     print(f"Provider: {response.provider.value}")
     print(f"Response: {response.content[:100]}...")

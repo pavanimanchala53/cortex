@@ -15,15 +15,12 @@ class TestSemanticCache(unittest.TestCase):
         """Create temporary database for testing."""
         self.temp_dir = tempfile.mkdtemp()
         self.db_path = os.path.join(self.temp_dir, "test_cache.db")
-        self.cache = SemanticCache(
-            db_path=self.db_path,
-            max_entries=10,
-            similarity_threshold=0.85
-        )
+        self.cache = SemanticCache(db_path=self.db_path, max_entries=10, similarity_threshold=0.85)
 
     def tearDown(self):
         """Clean up temporary files."""
         import shutil
+
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 
@@ -58,15 +55,12 @@ class TestSemanticCache(unittest.TestCase):
             provider="openai",
             model="gpt-4",
             system_prompt="test system prompt",
-            commands=commands
+            commands=commands,
         )
 
         # Retrieve from cache
         retrieved = self.cache.get_commands(
-            prompt=prompt,
-            provider="openai",
-            model="gpt-4",
-            system_prompt="test system prompt"
+            prompt=prompt, provider="openai", model="gpt-4", system_prompt="test system prompt"
         )
 
         self.assertEqual(retrieved, commands)
@@ -82,7 +76,7 @@ class TestSemanticCache(unittest.TestCase):
             prompt="install something that was never cached",
             provider="openai",
             model="gpt-4",
-            system_prompt="test system prompt"
+            system_prompt="test system prompt",
         )
 
         self.assertIsNone(result)
@@ -99,7 +93,7 @@ class TestSemanticCache(unittest.TestCase):
             provider="openai",
             model="gpt-4",
             system_prompt="test system prompt",
-            commands=["sudo apt install nginx"]
+            commands=["sudo apt install nginx"],
         )
 
         # Try very similar wording
@@ -107,7 +101,7 @@ class TestSemanticCache(unittest.TestCase):
             prompt="install nginx web server",
             provider="openai",
             model="gpt-4",
-            system_prompt="test system prompt"
+            system_prompt="test system prompt",
         )
 
         # Should find the exact match
@@ -126,7 +120,7 @@ class TestSemanticCache(unittest.TestCase):
             provider="openai",
             model="gpt-4",
             system_prompt="test",
-            commands=commands_openai
+            commands=commands_openai,
         )
 
         # Store with Claude
@@ -135,23 +129,17 @@ class TestSemanticCache(unittest.TestCase):
             provider="claude",
             model="claude-3",
             system_prompt="test",
-            commands=commands_claude
+            commands=commands_claude,
         )
 
         # Retrieve for OpenAI
         result_openai = self.cache.get_commands(
-            prompt=prompt,
-            provider="openai",
-            model="gpt-4",
-            system_prompt="test"
+            prompt=prompt, provider="openai", model="gpt-4", system_prompt="test"
         )
 
         # Retrieve for Claude
         result_claude = self.cache.get_commands(
-            prompt=prompt,
-            provider="claude",
-            model="claude-3",
-            system_prompt="test"
+            prompt=prompt, provider="claude", model="claude-3", system_prompt="test"
         )
 
         self.assertEqual(result_openai, commands_openai)
@@ -166,7 +154,7 @@ class TestSemanticCache(unittest.TestCase):
                 provider="openai",
                 model="gpt-4",
                 system_prompt="test",
-                commands=[f"apt install package{i}"]
+                commands=[f"apt install package{i}"],
             )
 
         # Add one more (should trigger eviction)
@@ -175,7 +163,7 @@ class TestSemanticCache(unittest.TestCase):
             provider="openai",
             model="gpt-4",
             system_prompt="test",
-            commands=["apt install package10"]
+            commands=["apt install package10"],
         )
 
         # Verify cache size doesn't exceed max

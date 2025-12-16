@@ -21,6 +21,7 @@ from typing import Any
 @dataclass
 class MemoryEntry:
     """Represents a single memory entry in the system"""
+
     id: int | None = None
     timestamp: str = ""
     category: str = ""  # package, command, pattern, preference, error
@@ -42,6 +43,7 @@ class MemoryEntry:
 @dataclass
 class Pattern:
     """Represents a learned pattern"""
+
     pattern_id: str
     pattern_type: str  # installation, configuration, workflow
     description: str
@@ -55,6 +57,7 @@ class Pattern:
 @dataclass
 class Suggestion:
     """Represents an AI-generated suggestion"""
+
     suggestion_id: str
     suggestion_type: str  # optimization, alternative, warning
     title: str
@@ -88,7 +91,8 @@ class ContextMemory:
         cursor = conn.cursor()
 
         # Memory entries table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS memory_entries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp TEXT NOT NULL,
@@ -102,10 +106,12 @@ class ContextMemory:
                 metadata TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Patterns table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS patterns (
                 pattern_id TEXT PRIMARY KEY,
                 pattern_type TEXT NOT NULL,
@@ -117,10 +123,12 @@ class ContextMemory:
                 context TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Suggestions table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS suggestions (
                 suggestion_id TEXT PRIMARY KEY,
                 suggestion_type TEXT NOT NULL,
@@ -131,23 +139,30 @@ class ContextMemory:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 dismissed BOOLEAN DEFAULT 0
             )
-        """)
+        """
+        )
 
         # User preferences table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS preferences (
                 key TEXT PRIMARY KEY,
                 value TEXT,
                 category TEXT,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Create indexes for performance
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_category ON memory_entries(category)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_memory_timestamp ON memory_entries(timestamp)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_memory_timestamp ON memory_entries(timestamp)"
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_patterns_type ON patterns(pattern_type)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_type ON suggestions(suggestion_type)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_suggestions_type ON suggestions(suggestion_type)"
+        )
 
         conn.commit()
         conn.close()
@@ -165,21 +180,24 @@ class ContextMemory:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO memory_entries
             (timestamp, category, context, action, result, success, confidence, frequency, metadata)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            entry.timestamp,
-            entry.category,
-            entry.context,
-            entry.action,
-            entry.result,
-            entry.success,
-            entry.confidence,
-            entry.frequency,
-            json.dumps(entry.metadata)
-        ))
+        """,
+            (
+                entry.timestamp,
+                entry.category,
+                entry.context,
+                entry.action,
+                entry.result,
+                entry.success,
+                entry.confidence,
+                entry.frequency,
+                json.dumps(entry.metadata),
+            ),
+        )
 
         entry_id = cursor.lastrowid
         conn.commit()
@@ -209,12 +227,15 @@ class ContextMemory:
 
         results = []
         for keyword in keywords:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM memory_entries
                 WHERE context LIKE ? OR action LIKE ?
                 ORDER BY timestamp DESC
                 LIMIT ?
-            """, (f"%{keyword}%", f"%{keyword}%", limit))
+            """,
+                (f"%{keyword}%", f"%{keyword}%", limit),
+            )
 
             for row in cursor.fetchall():
                 entry = self._row_to_memory_entry(row)
@@ -236,14 +257,28 @@ class ContextMemory:
             success=bool(row[6]),
             confidence=row[7],
             frequency=row[8],
-            metadata=json.loads(row[9]) if row[9] else {}
+            metadata=json.loads(row[9]) if row[9] else {},
         )
 
     def _extract_keywords(self, text: str) -> list[str]:
         """Extract meaningful keywords from text"""
         # Remove common words and extract significant terms
-        stopwords = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with'}
-        words = re.findall(r'\b\w+\b', text.lower())
+        stopwords = {
+            "the",
+            "a",
+            "an",
+            "and",
+            "or",
+            "but",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+        }
+        words = re.findall(r"\b\w+\b", text.lower())
         return [w for w in words if w not in stopwords and len(w) > 2]
 
     def _analyze_patterns(self, entry: MemoryEntry):
@@ -256,39 +291,45 @@ class ContextMemory:
         cursor = conn.cursor()
 
         # Look for similar actions in recent history
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT action, COUNT(*) as count
             FROM memory_entries
             WHERE category = ?
             AND timestamp > datetime('now', '-30 days')
             GROUP BY action
             HAVING count >= 3
-        """, (entry.category,))
+        """,
+            (entry.category,),
+        )
 
         for row in cursor.fetchall():
             action, frequency = row
             pattern_id = self._generate_pattern_id(entry.category, action)
 
             # Update or create pattern
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO patterns (pattern_id, pattern_type, description, frequency, last_seen, confidence, actions, context)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(pattern_id) DO UPDATE SET
                     frequency = ?,
                     last_seen = ?,
                     confidence = MIN(1.0, confidence + 0.1)
-            """, (
-                pattern_id,
-                entry.category,
-                f"Recurring pattern: {action}",
-                frequency,
-                entry.timestamp,
-                min(1.0, frequency / 10.0),  # Confidence increases with frequency
-                json.dumps([action]),
-                json.dumps({"category": entry.category}),
-                frequency,
-                entry.timestamp
-            ))
+            """,
+                (
+                    pattern_id,
+                    entry.category,
+                    f"Recurring pattern: {action}",
+                    frequency,
+                    entry.timestamp,
+                    min(1.0, frequency / 10.0),  # Confidence increases with frequency
+                    json.dumps([action]),
+                    json.dumps({"category": entry.category}),
+                    frequency,
+                    entry.timestamp,
+                ),
+            )
 
         conn.commit()
         conn.close()
@@ -298,7 +339,9 @@ class ContextMemory:
         content = f"{category}:{action}".encode()
         return hashlib.sha256(content).hexdigest()[:16]
 
-    def get_patterns(self, pattern_type: str | None = None, min_confidence: float = 0.5) -> list[Pattern]:
+    def get_patterns(
+        self, pattern_type: str | None = None, min_confidence: float = 0.5
+    ) -> list[Pattern]:
         """
         Retrieve learned patterns
 
@@ -336,7 +379,7 @@ class ContextMemory:
                 last_seen=row[4],
                 confidence=row[5],
                 actions=json.loads(row[6]),
-                context=json.loads(row[7])
+                context=json.loads(row[7]),
             )
             patterns.append(pattern)
 
@@ -362,12 +405,14 @@ class ContextMemory:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM memory_entries
             WHERE timestamp > datetime('now', '-7 days')
             ORDER BY timestamp DESC
             LIMIT 50
-        """)
+        """
+        )
 
         recent_entries = [self._row_to_memory_entry(row) for row in cursor.fetchall()]
 
@@ -388,12 +433,14 @@ class ContextMemory:
 
         return suggestions
 
-    def _suggest_optimizations(self, entries: list[MemoryEntry], patterns: list[Pattern]) -> list[Suggestion]:
+    def _suggest_optimizations(
+        self, entries: list[MemoryEntry], patterns: list[Pattern]
+    ) -> list[Suggestion]:
         """Generate optimization suggestions"""
         suggestions = []
 
         # Check for repeated installations
-        package_counts = Counter([e.action for e in entries if e.category == 'package'])
+        package_counts = Counter([e.action for e in entries if e.category == "package"])
 
         for package, count in package_counts.items():
             if count >= 3:
@@ -404,7 +451,7 @@ class ContextMemory:
                     description=f"You've installed {package} {count} times recently. Consider adding it to your default setup script.",
                     confidence=min(1.0, count / 5.0),
                     based_on=[str(e.id) for e in entries if e.action == package],
-                    created_at=datetime.now().isoformat()
+                    created_at=datetime.now().isoformat(),
                 )
                 suggestions.append(suggestion)
 
@@ -429,7 +476,7 @@ class ContextMemory:
                     description=f"Based on your history, try: {successful[0].action}",
                     confidence=0.7,
                     based_on=[str(entry.id)],
-                    created_at=datetime.now().isoformat()
+                    created_at=datetime.now().isoformat(),
                 )
                 suggestions.append(suggestion)
 
@@ -448,7 +495,7 @@ class ContextMemory:
                     description=f"You frequently do this ({pattern.frequency} times). Would you like to automate it?",
                     confidence=pattern.confidence,
                     based_on=[pattern.pattern_id],
-                    created_at=datetime.now().isoformat()
+                    created_at=datetime.now().isoformat(),
                 )
                 suggestions.append(suggestion)
 
@@ -464,19 +511,22 @@ class ContextMemory:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT OR IGNORE INTO suggestions
             (suggestion_id, suggestion_type, title, description, confidence, based_on, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            suggestion.suggestion_id,
-            suggestion.suggestion_type,
-            suggestion.title,
-            suggestion.description,
-            suggestion.confidence,
-            json.dumps(suggestion.based_on),
-            suggestion.created_at
-        ))
+        """,
+            (
+                suggestion.suggestion_id,
+                suggestion.suggestion_type,
+                suggestion.title,
+                suggestion.description,
+                suggestion.confidence,
+                json.dumps(suggestion.based_on),
+                suggestion.created_at,
+            ),
+        )
 
         conn.commit()
         conn.close()
@@ -486,12 +536,15 @@ class ContextMemory:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM suggestions
             WHERE dismissed = 0
             ORDER BY confidence DESC, created_at DESC
             LIMIT ?
-        """, (limit,))
+        """,
+            (limit,),
+        )
 
         suggestions = []
         for row in cursor.fetchall():
@@ -502,7 +555,7 @@ class ContextMemory:
                 description=row[3],
                 confidence=row[4],
                 based_on=json.loads(row[5]),
-                created_at=row[6]
+                created_at=row[6],
             )
             suggestions.append(suggestion)
 
@@ -514,11 +567,14 @@ class ContextMemory:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE suggestions
             SET dismissed = 1
             WHERE suggestion_id = ?
-        """, (suggestion_id,))
+        """,
+            (suggestion_id,),
+        )
 
         conn.commit()
         conn.close()
@@ -528,20 +584,23 @@ class ContextMemory:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO preferences (key, value, category, updated_at)
             VALUES (?, ?, ?, ?)
             ON CONFLICT(key) DO UPDATE SET
                 value = ?,
                 updated_at = ?
-        """, (
-            key,
-            json.dumps(value),
-            category,
-            datetime.now().isoformat(),
-            json.dumps(value),
-            datetime.now().isoformat()
-        ))
+        """,
+            (
+                key,
+                json.dumps(value),
+                category,
+                datetime.now().isoformat(),
+                json.dumps(value),
+                datetime.now().isoformat(),
+            ),
+        )
 
         conn.commit()
         conn.close()
@@ -551,9 +610,12 @@ class ContextMemory:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT value FROM preferences WHERE key = ?
-        """, (key,))
+        """,
+            (key,),
+        )
 
         row = cursor.fetchone()
         conn.close()
@@ -571,38 +633,44 @@ class ContextMemory:
 
         # Total entries
         cursor.execute("SELECT COUNT(*) FROM memory_entries")
-        stats['total_entries'] = cursor.fetchone()[0]
+        stats["total_entries"] = cursor.fetchone()[0]
 
         # Entries by category
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT category, COUNT(*)
             FROM memory_entries
             GROUP BY category
-        """)
-        stats['by_category'] = dict(cursor.fetchall())
+        """
+        )
+        stats["by_category"] = dict(cursor.fetchall())
 
         # Success rate
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as success_rate
             FROM memory_entries
-        """)
-        stats['success_rate'] = round(cursor.fetchone()[0], 2) if stats['total_entries'] > 0 else 0
+        """
+        )
+        stats["success_rate"] = round(cursor.fetchone()[0], 2) if stats["total_entries"] > 0 else 0
 
         # Total patterns
         cursor.execute("SELECT COUNT(*) FROM patterns")
-        stats['total_patterns'] = cursor.fetchone()[0]
+        stats["total_patterns"] = cursor.fetchone()[0]
 
         # Active suggestions
         cursor.execute("SELECT COUNT(*) FROM suggestions WHERE dismissed = 0")
-        stats['active_suggestions'] = cursor.fetchone()[0]
+        stats["active_suggestions"] = cursor.fetchone()[0]
 
         # Recent activity
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*) FROM memory_entries
             WHERE timestamp > datetime('now', '-7 days')
-        """)
-        stats['recent_activity'] = cursor.fetchone()[0]
+        """
+        )
+        stats["recent_activity"] = cursor.fetchone()[0]
 
         conn.close()
         return stats
@@ -613,33 +681,33 @@ class ContextMemory:
         cursor = conn.cursor()
 
         data = {
-            'exported_at': datetime.now().isoformat(),
-            'entries': [],
-            'patterns': [],
-            'suggestions': [],
-            'preferences': []
+            "exported_at": datetime.now().isoformat(),
+            "entries": [],
+            "patterns": [],
+            "suggestions": [],
+            "preferences": [],
         }
 
         # Export entries
         cursor.execute("SELECT * FROM memory_entries")
         for row in cursor.fetchall():
             entry = self._row_to_memory_entry(row)
-            data['entries'].append(asdict(entry))
+            data["entries"].append(asdict(entry))
 
         # Export patterns
         cursor.execute("SELECT * FROM patterns")
         for row in cursor.fetchall():
             pattern = {
-                'pattern_id': row[0],
-                'pattern_type': row[1],
-                'description': row[2],
-                'frequency': row[3],
-                'last_seen': row[4],
-                'confidence': row[5],
-                'actions': json.loads(row[6]),
-                'context': json.loads(row[7])
+                "pattern_id": row[0],
+                "pattern_type": row[1],
+                "description": row[2],
+                "frequency": row[3],
+                "last_seen": row[4],
+                "confidence": row[5],
+                "actions": json.loads(row[6]),
+                "context": json.loads(row[7]),
             }
-            data['patterns'].append(pattern)
+            data["patterns"].append(pattern)
 
         # Export suggestions
         query = "SELECT * FROM suggestions"
@@ -649,29 +717,25 @@ class ContextMemory:
 
         for row in cursor.fetchall():
             suggestion = {
-                'suggestion_id': row[0],
-                'suggestion_type': row[1],
-                'title': row[2],
-                'description': row[3],
-                'confidence': row[4],
-                'based_on': json.loads(row[5]),
-                'created_at': row[6]
+                "suggestion_id": row[0],
+                "suggestion_type": row[1],
+                "title": row[2],
+                "description": row[3],
+                "confidence": row[4],
+                "based_on": json.loads(row[5]),
+                "created_at": row[6],
             }
-            data['suggestions'].append(suggestion)
+            data["suggestions"].append(suggestion)
 
         # Export preferences
         cursor.execute("SELECT key, value, category FROM preferences")
         for row in cursor.fetchall():
-            pref = {
-                'key': row[0],
-                'value': json.loads(row[1]),
-                'category': row[2]
-            }
-            data['preferences'].append(pref)
+            pref = {"key": row[0], "value": json.loads(row[1]), "category": row[2]}
+            data["preferences"].append(pref)
 
         conn.close()
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(data, f, indent=2)
 
         return output_path
@@ -688,7 +752,7 @@ def main():
         action="install docker-ce docker-compose",
         result="Successfully installed Docker 24.0.5",
         success=True,
-        metadata={"packages": ["docker-ce", "docker-compose"]}
+        metadata={"packages": ["docker-ce", "docker-compose"]},
     )
     memory.record_interaction(entry1)
 
@@ -698,7 +762,7 @@ def main():
         action="install postgresql-15",
         result="Successfully installed PostgreSQL 15.3",
         success=True,
-        metadata={"packages": ["postgresql-15"]}
+        metadata={"packages": ["postgresql-15"]},
     )
     memory.record_interaction(entry2)
 

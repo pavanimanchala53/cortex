@@ -6,7 +6,6 @@ natural language input into a suggested shell command.
 """
 
 
-
 def suggest_command(user_input: str) -> str | None:
     """
     Generate a shell command suggestion from free-form user input.

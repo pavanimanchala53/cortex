@@ -13,6 +13,7 @@ from enum import Enum
 
 class PackageManagerType(Enum):
     """Supported package manager types."""
+
     APT = "apt"  # Ubuntu/Debian
     YUM = "yum"  # RHEL/CentOS/Fedora (older)
     DNF = "dnf"  # RHEL/CentOS/Fedora (newer)
@@ -43,32 +44,17 @@ class PackageManager:
         """Detect the package manager based on the system."""
         try:
             # Check for apt
-            result = subprocess.run(
-                ["which", "apt"],
-                capture_output=True,
-                text=True,
-                timeout=2
-            )
+            result = subprocess.run(["which", "apt"], capture_output=True, text=True, timeout=2)
             if result.returncode == 0:
                 return PackageManagerType.APT
 
             # Check for dnf (preferred over yum on newer systems)
-            result = subprocess.run(
-                ["which", "dnf"],
-                capture_output=True,
-                text=True,
-                timeout=2
-            )
+            result = subprocess.run(["which", "dnf"], capture_output=True, text=True, timeout=2)
             if result.returncode == 0:
                 return PackageManagerType.DNF
 
             # Check for yum
-            result = subprocess.run(
-                ["which", "yum"],
-                capture_output=True,
-                text=True,
-                timeout=2
-            )
+            result = subprocess.run(["which", "yum"], capture_output=True, text=True, timeout=2)
             if result.returncode == 0:
                 return PackageManagerType.YUM
         except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -122,17 +108,36 @@ class PackageManager:
                 "yum": ["python3-devel", "python3-pip", "gcc", "gcc-c++", "make"],
             },
             "python data science": {
-                "apt": ["python3", "python3-pip", "python3-numpy", "python3-pandas",
-                       "python3-scipy", "python3-matplotlib", "python3-jupyter"],
-                "yum": ["python3", "python3-pip", "python3-numpy", "python3-pandas",
-                       "python3-scipy", "python3-matplotlib"],
+                "apt": [
+                    "python3",
+                    "python3-pip",
+                    "python3-numpy",
+                    "python3-pandas",
+                    "python3-scipy",
+                    "python3-matplotlib",
+                    "python3-jupyter",
+                ],
+                "yum": [
+                    "python3",
+                    "python3-pip",
+                    "python3-numpy",
+                    "python3-pandas",
+                    "python3-scipy",
+                    "python3-matplotlib",
+                ],
             },
             "python machine learning": {
-                "apt": ["python3", "python3-pip", "python3-numpy", "python3-scipy",
-                       "python3-scikit-learn", "python3-tensorflow", "python3-keras"],
+                "apt": [
+                    "python3",
+                    "python3-pip",
+                    "python3-numpy",
+                    "python3-scipy",
+                    "python3-scikit-learn",
+                    "python3-tensorflow",
+                    "python3-keras",
+                ],
                 "yum": ["python3", "python3-pip", "python3-numpy", "python3-scipy"],
             },
-
             # Web development
             "web development": {
                 "apt": ["nodejs", "npm", "git", "curl", "wget"],
@@ -154,7 +159,6 @@ class PackageManager:
                 "apt": ["apache2"],
                 "yum": ["httpd"],
             },
-
             # Database
             "mysql": {
                 "apt": ["mysql-server", "mysql-client"],
@@ -172,7 +176,6 @@ class PackageManager:
                 "apt": ["redis-server"],
                 "yum": ["redis"],
             },
-
             # Development tools
             "build tools": {
                 "apt": ["build-essential", "gcc", "g++", "make", "cmake"],
@@ -198,7 +201,6 @@ class PackageManager:
                 "apt": ["wget"],
                 "yum": ["wget"],
             },
-
             # System utilities
             "system monitoring": {
                 "apt": ["htop", "iotop", "nethogs", "sysstat"],
@@ -212,7 +214,6 @@ class PackageManager:
                 "apt": ["zip", "unzip", "gzip", "bzip2", "xz-utils"],
                 "yum": ["zip", "unzip", "gzip", "bzip2", "xz"],
             },
-
             # Media and graphics
             "image tools": {
                 "apt": ["imagemagick", "ffmpeg", "libjpeg-dev", "libpng-dev"],
@@ -222,7 +223,6 @@ class PackageManager:
                 "apt": ["ffmpeg", "vlc"],
                 "yum": ["ffmpeg", "vlc"],
             },
-
             # Security tools
             "security tools": {
                 "apt": ["ufw", "fail2ban", "openssh-server", "ssl-cert"],
@@ -232,7 +232,6 @@ class PackageManager:
                 "apt": ["ufw"],
                 "yum": ["firewalld"],
             },
-
             # Cloud and containers
             "kubernetes": {
                 "apt": ["kubectl"],
@@ -242,13 +241,11 @@ class PackageManager:
                 "apt": ["terraform"],
                 "yum": ["terraform"],
             },
-
             # Text processing
             "text editors": {
                 "apt": ["vim", "nano", "emacs"],
                 "yum": ["vim", "nano", "emacs"],
             },
-
             # Version control
             "version control": {
                 "apt": ["git", "subversion"],
@@ -261,9 +258,9 @@ class PackageManager:
         # Convert to lowercase and remove extra whitespace
         text = text.lower().strip()
         # Remove common punctuation
-        text = re.sub(r'[^\w\s]', ' ', text)
+        text = re.sub(r"[^\w\s]", " ", text)
         # Normalize whitespace
-        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r"\s+", " ", text)
         # Final strip to remove any leading/trailing whitespace
         return text.strip()
 
@@ -293,9 +290,13 @@ class PackageManager:
         # Handle Python with priority - check most specific first
         if "python" in normalized:
             if "machine learning" in normalized or "ml" in normalized:
-                matched_packages.update(self.package_mappings["python machine learning"].get(pm_key, []))
+                matched_packages.update(
+                    self.package_mappings["python machine learning"].get(pm_key, [])
+                )
             elif "data science" in normalized:
-                matched_packages.update(self.package_mappings["python data science"].get(pm_key, []))
+                matched_packages.update(
+                    self.package_mappings["python data science"].get(pm_key, [])
+                )
             elif "development" in normalized or "dev" in normalized:
                 matched_packages.update(self.package_mappings["python development"].get(pm_key, []))
             else:
@@ -333,16 +334,33 @@ class PackageManager:
         # Handle exact key matches for multi-word categories
         for key, packages in self.package_mappings.items():
             # Skip single-word software (handled separately) and Python (handled above)
-            if " " in key and key not in ["python", "python development", "python data science", "python machine learning"]:
+            if " " in key and key not in [
+                "python",
+                "python development",
+                "python data science",
+                "python machine learning",
+            ]:
                 if key in normalized:
                     matched_packages.update(packages.get(pm_key, []))
 
         # Handle individual software packages (only if not already matched above)
         # Check for exact key matches for single-word software
         single_software = {
-            "docker", "nginx", "apache", "mysql", "postgresql", "mongodb",
-            "redis", "git", "vim", "emacs", "curl", "wget", "nodejs",
-            "kubernetes", "terraform"
+            "docker",
+            "nginx",
+            "apache",
+            "mysql",
+            "postgresql",
+            "mongodb",
+            "redis",
+            "git",
+            "vim",
+            "emacs",
+            "curl",
+            "wget",
+            "nodejs",
+            "kubernetes",
+            "terraform",
         }
 
         for software in single_software:
@@ -351,7 +369,12 @@ class PackageManager:
                 # Check if it's part of a larger phrase (e.g., "docker-compose" contains "docker")
                 # but we want to match "docker" as a standalone request
                 words = normalized.split()
-                if software in words or normalized == software or normalized.startswith(software + " ") or normalized.endswith(" " + software):
+                if (
+                    software in words
+                    or normalized == software
+                    or normalized.startswith(software + " ")
+                    or normalized.endswith(" " + software)
+                ):
                     if software in self.package_mappings:
                         matched_packages.update(self.package_mappings[software].get(pm_key, []))
 
@@ -416,36 +439,29 @@ class PackageManager:
         try:
             if self.pm_type == PackageManagerType.APT:
                 result = subprocess.run(
-                    ["apt-cache", "show", package_name],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
+                    ["apt-cache", "show", package_name], capture_output=True, text=True, timeout=10
                 )
                 if result.returncode == 0:
                     info = {}
-                    for line in result.stdout.split('\n'):
-                        if ':' in line:
-                            key, value = line.split(':', 1)
+                    for line in result.stdout.split("\n"):
+                        if ":" in line:
+                            key, value = line.split(":", 1)
                             info[key.strip()] = value.strip()
                     return info
 
             elif self.pm_type in (PackageManagerType.YUM, PackageManagerType.DNF):
                 pm_cmd = "yum" if self.pm_type == PackageManagerType.YUM else "dnf"
                 result = subprocess.run(
-                    [pm_cmd, "info", package_name],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
+                    [pm_cmd, "info", package_name], capture_output=True, text=True, timeout=10
                 )
                 if result.returncode == 0:
                     info = {}
-                    for line in result.stdout.split('\n'):
-                        if ':' in line:
-                            key, value = line.split(':', 1)
+                    for line in result.stdout.split("\n"):
+                        if ":" in line:
+                            key, value = line.split(":", 1)
                             info[key.strip()] = value.strip()
                     return info
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pass
 
         return None
-

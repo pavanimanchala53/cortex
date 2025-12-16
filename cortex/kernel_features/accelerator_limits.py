@@ -14,11 +14,13 @@ from pathlib import Path
 CORTEX_DB = Path.home() / ".cortex/limits.db"
 CGROUP_ROOT = Path("/sys/fs/cgroup")
 
+
 class WorkloadPreset(Enum):
     INFERENCE = "inference"
     TRAINING = "training"
     BATCH = "batch"
     INTERACTIVE = "interactive"
+
 
 PRESETS = {
     "inference": {"cpu": 400, "memory_gb": 32, "oom_adj": -500, "gpu_pct": 100},
@@ -26,6 +28,7 @@ PRESETS = {
     "batch": {"cpu": 800, "memory_gb": 64, "oom_adj": 0, "gpu_pct": 80},
     "interactive": {"cpu": 200, "memory_gb": 16, "oom_adj": -200, "gpu_pct": 50},
 }
+
 
 @dataclass
 class ResourceLimits:
@@ -42,8 +45,9 @@ class ResourceLimits:
     @classmethod
     def from_preset(cls, name: str, preset: str, gpus: int = 0):
         p = PRESETS.get(preset, PRESETS["inference"])
-        return cls(name, preset, p["cpu"], int(p["memory_gb"] * 1e9),
-                   list(range(gpus)), p["oom_adj"])
+        return cls(
+            name, preset, p["cpu"], int(p["memory_gb"] * 1e9), list(range(gpus)), p["oom_adj"]
+        )
 
 
 class LimitsDatabase:
@@ -54,8 +58,10 @@ class LimitsDatabase:
 
     def save(self, limits: ResourceLimits):
         with sqlite3.connect(CORTEX_DB) as conn:
-            conn.execute("INSERT OR REPLACE INTO profiles VALUES (?,?)",
-                        (limits.name, json.dumps(asdict(limits))))
+            conn.execute(
+                "INSERT OR REPLACE INTO profiles VALUES (?,?)",
+                (limits.name, json.dumps(asdict(limits))),
+            )
 
     def get(self, name: str) -> ResourceLimits | None:
         with sqlite3.connect(CORTEX_DB) as conn:
@@ -64,7 +70,10 @@ class LimitsDatabase:
 
     def list_all(self):
         with sqlite3.connect(CORTEX_DB) as conn:
-            return [ResourceLimits(**json.loads(r[0])) for r in conn.execute("SELECT config FROM profiles")]
+            return [
+                ResourceLimits(**json.loads(r[0]))
+                for r in conn.execute("SELECT config FROM profiles")
+            ]
 
 
 class AcceleratorLimitsManager:
@@ -88,11 +97,14 @@ class AcceleratorLimitsManager:
         print("-" * 65)
         for p in profiles:
             gpus = ",".join(map(str, p.gpu_ids)) or "-"
-            print(f"{p.name:<20} {p.preset:<12} {p.cpu_quota/100:.0f}{'':<5} {p.memory_max/1e9:.0f}G{'':<5} {gpus:<10}")
+            print(
+                f"{p.name:<20} {p.preset:<12} {p.cpu_quota/100:.0f}{'':<5} {p.memory_max/1e9:.0f}G{'':<5} {gpus:<10}"
+            )
 
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Cortex Accelerator Limits")
     sub = parser.add_subparsers(dest="cmd")
 

@@ -22,6 +22,7 @@ from typing import Any
 @dataclass
 class LogEntry:
     """Structured log entry"""
+
     timestamp: str
     level: str
     logger: str
@@ -39,22 +40,22 @@ class StructuredFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         log_data = {
-            'timestamp': datetime.fromtimestamp(record.created).isoformat(),
-            'level': record.levelname,
-            'logger': record.name,
-            'message': record.getMessage(),
-            'module': record.module,
-            'function': record.funcName,
-            'line': record.lineno
+            "timestamp": datetime.fromtimestamp(record.created).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
         }
 
         # Add exception info if present
         if record.exc_info:
-            log_data['exception'] = ''.join(traceback.format_exception(*record.exc_info))
+            log_data["exception"] = "".join(traceback.format_exception(*record.exc_info))
 
         # Add extra fields
-        if hasattr(record, 'context'):
-            log_data['context'] = record.context
+        if hasattr(record, "context"):
+            log_data["context"] = record.context
 
         return json.dumps(log_data)
 
@@ -63,13 +64,13 @@ class ColoredConsoleFormatter(logging.Formatter):
     """Colored formatter for console output"""
 
     COLORS = {
-        'DEBUG': '\033[36m',      # Cyan
-        'INFO': '\033[32m',       # Green
-        'WARNING': '\033[33m',    # Yellow
-        'ERROR': '\033[31m',      # Red
-        'CRITICAL': '\033[35m'    # Magenta
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
+        "CRITICAL": "\033[35m",  # Magenta
     }
-    RESET = '\033[0m'
+    RESET = "\033[0m"
 
     def format(self, record: logging.LogRecord) -> str:
         # Add color
@@ -106,7 +107,7 @@ class CortexLogger:
         console_level: str = "INFO",
         file_level: str = "DEBUG",
         max_bytes: int = 10 * 1024 * 1024,  # 10MB
-        backup_count: int = 5
+        backup_count: int = 5,
     ):
         """
         Initialize logging system
@@ -144,9 +145,7 @@ class CortexLogger:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(getattr(logging, level))
 
-        formatter = ColoredConsoleFormatter(
-            '%(levelname)s [%(name)s] %(message)s'
-        )
+        formatter = ColoredConsoleFormatter("%(levelname)s [%(name)s] %(message)s")
         console_handler.setFormatter(formatter)
 
         self.logger.addHandler(console_handler)
@@ -155,16 +154,11 @@ class CortexLogger:
         """Setup rotating file handler"""
         log_file = self.log_dir / f"{self.name}.log"
 
-        file_handler = RotatingFileHandler(
-            log_file,
-            maxBytes=max_bytes,
-            backupCount=backup_count
-        )
+        file_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
         file_handler.setLevel(getattr(logging, level))
 
         formatter = logging.Formatter(
-            '%(asctime)s [%(levelname)s] %(name)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            "%(asctime)s [%(levelname)s] %(name)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
         file_handler.setFormatter(formatter)
 
@@ -174,11 +168,7 @@ class CortexLogger:
         """Setup structured JSON log handler"""
         json_file = self.log_dir / f"{self.name}.json.log"
 
-        json_handler = RotatingFileHandler(
-            json_file,
-            maxBytes=max_bytes,
-            backupCount=backup_count
-        )
+        json_handler = RotatingFileHandler(json_file, maxBytes=max_bytes, backupCount=backup_count)
         json_handler.setLevel(logging.DEBUG)
         json_handler.setFormatter(StructuredFormatter())
 
@@ -189,15 +179,13 @@ class CortexLogger:
         error_file = self.log_dir / f"{self.name}.error.log"
 
         error_handler = RotatingFileHandler(
-            error_file,
-            maxBytes=5 * 1024 * 1024,  # 5MB
-            backupCount=3
+            error_file, maxBytes=5 * 1024 * 1024, backupCount=3  # 5MB
         )
         error_handler.setLevel(logging.ERROR)
 
         formatter = logging.Formatter(
-            '%(asctime)s [%(levelname)s] %(name)s - %(message)s\n%(pathname)s:%(lineno)d\n',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            "%(asctime)s [%(levelname)s] %(name)s - %(message)s\n%(pathname)s:%(lineno)d\n",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
         error_handler.setFormatter(formatter)
 
@@ -225,7 +213,7 @@ class CortexLogger:
 
     def _log(self, level: int, message: str, context: dict = None, exc_info: bool = False):
         """Internal logging method"""
-        extra = {'context': context} if context else {}
+        extra = {"context": context} if context else {}
         self.logger.log(level, message, extra=extra, exc_info=exc_info)
 
     def start_operation(self, operation_name: str):
@@ -243,7 +231,7 @@ class CortexLogger:
                 self._log(
                     getattr(logging, log_level),
                     f"Operation '{operation_name}' completed",
-                    {'duration_seconds': duration}
+                    {"duration_seconds": duration},
                 )
 
                 return duration
@@ -253,9 +241,9 @@ class CortexLogger:
     def log_function_call(self, func_name: str, args: tuple = None, kwargs: dict = None):
         """Log function call with arguments"""
         context = {
-            'function': func_name,
-            'args': str(args) if args else None,
-            'kwargs': str(kwargs) if kwargs else None
+            "function": func_name,
+            "args": str(args) if args else None,
+            "kwargs": str(kwargs) if kwargs else None,
         }
         self.debug(f"Calling function: {func_name}", context)
 
@@ -264,34 +252,32 @@ class CortexLogger:
         import platform
 
         info = {
-            'platform': platform.platform(),
-            'python_version': platform.python_version(),
-            'machine': platform.machine(),
-            'processor': platform.processor()
+            "platform": platform.platform(),
+            "python_version": platform.python_version(),
+            "machine": platform.machine(),
+            "processor": platform.processor(),
         }
 
         self.info("System information", info)
 
     def get_log_stats(self) -> dict[str, Any]:
         """Get logging statistics"""
-        stats = {
-            'log_directory': str(self.log_dir),
-            'log_files': [],
-            'total_size_bytes': 0
-        }
+        stats = {"log_directory": str(self.log_dir), "log_files": [], "total_size_bytes": 0}
 
         for log_file in self.log_dir.glob(f"{self.name}*.log*"):
             size = log_file.stat().st_size
-            stats['log_files'].append({
-                'name': log_file.name,
-                'size_bytes': size,
-                'size_mb': round(size / (1024 * 1024), 2),
-                'modified': datetime.fromtimestamp(log_file.stat().st_mtime).isoformat()
-            })
-            stats['total_size_bytes'] += size
+            stats["log_files"].append(
+                {
+                    "name": log_file.name,
+                    "size_bytes": size,
+                    "size_mb": round(size / (1024 * 1024), 2),
+                    "modified": datetime.fromtimestamp(log_file.stat().st_mtime).isoformat(),
+                }
+            )
+            stats["total_size_bytes"] += size
 
-        stats['total_size_mb'] = round(stats['total_size_bytes'] / (1024 * 1024), 2)
-        stats['file_count'] = len(stats['log_files'])
+        stats["total_size_mb"] = round(stats["total_size_bytes"] / (1024 * 1024), 2)
+        stats["file_count"] = len(stats["log_files"])
 
         return stats
 
@@ -300,7 +286,7 @@ class CortexLogger:
         pattern: str,
         level: str | None = None,
         since: datetime | None = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> list[dict]:
         """
         Search through log files
@@ -332,17 +318,17 @@ class CortexLogger:
                         entry = json.loads(line)
 
                         # Filter by level
-                        if level and entry.get('level') != level:
+                        if level and entry.get("level") != level:
                             continue
 
                         # Filter by time
                         if since:
-                            entry_time = datetime.fromisoformat(entry['timestamp'])
+                            entry_time = datetime.fromisoformat(entry["timestamp"])
                             if entry_time < since:
                                 continue
 
                         # Filter by pattern
-                        if pattern.lower() in entry.get('message', '').lower():
+                        if pattern.lower() in entry.get("message", "").lower():
                             results.append(entry)
 
                     except json.JSONDecodeError:
@@ -358,7 +344,7 @@ class CortexLogger:
         output_path: str,
         format: str = "json",
         since: datetime | None = None,
-        level: str | None = None
+        level: str | None = None,
     ) -> str:
         """
         Export logs to file
@@ -378,19 +364,20 @@ class CortexLogger:
         logs = self.search_logs("", level=level, since=since, limit=10000)
 
         if format == "json":
-            with open(output_file, 'w') as f:
+            with open(output_file, "w") as f:
                 json.dump(logs, f, indent=2)
 
         elif format == "csv":
             import csv
-            with open(output_file, 'w', newline='') as f:
+
+            with open(output_file, "w", newline="") as f:
                 if logs:
                     writer = csv.DictWriter(f, fieldnames=logs[0].keys())
                     writer.writeheader()
                     writer.writerows(logs)
 
         elif format == "txt":
-            with open(output_file, 'w') as f:
+            with open(output_file, "w") as f:
                 for log in logs:
                     f.write(f"[{log['timestamp']}] {log['level']} - {log['message']}\n")
 
@@ -441,12 +428,12 @@ class CortexLogger:
         errors = self.search_logs("", level="ERROR", since=since, limit=1000)
 
         summary = {
-            'total_errors': len(errors),
-            'time_period_hours': hours,
-            'error_messages': Counter([e['message'] for e in errors]),
-            'error_modules': Counter([e.get('module', 'unknown') for e in errors]),
-            'first_error': errors[0]['timestamp'] if errors else None,
-            'last_error': errors[-1]['timestamp'] if errors else None
+            "total_errors": len(errors),
+            "time_period_hours": hours,
+            "error_messages": Counter([e["message"] for e in errors]),
+            "error_modules": Counter([e.get("module", "unknown") for e in errors]),
+            "first_error": errors[0]["timestamp"] if errors else None,
+            "last_error": errors[-1]["timestamp"] if errors else None,
         }
 
         return summary
@@ -467,8 +454,8 @@ class LogContext:
         if exc_type is not None:
             self.logger.error(
                 f"Operation '{self.operation}' failed",
-                context={'exception_type': exc_type.__name__},
-                exc_info=True
+                context={"exception_type": exc_type.__name__},
+                exc_info=True,
             )
         else:
             self.logger.end_operation(self.operation)
@@ -483,12 +470,13 @@ def main():
 
     # Basic logging
     logger.info("Cortex Linux starting up")
-    logger.debug("Debug information", {'version': '0.1.0'})
+    logger.debug("Debug information", {"version": "0.1.0"})
     logger.warning("This is a warning")
 
     # Operation timing
     logger.start_operation("package_install")
     import time
+
     time.sleep(0.1)
     logger.end_operation("package_install")
 

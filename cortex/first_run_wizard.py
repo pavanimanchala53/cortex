@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class WizardStep(Enum):
     """Steps in the first-run wizard."""
+
     WELCOME = "welcome"
     API_SETUP = "api_setup"
     HARDWARE_DETECTION = "hardware_detection"
@@ -36,6 +37,7 @@ class WizardStep(Enum):
 @dataclass
 class WizardState:
     """Tracks the current state of the wizard."""
+
     current_step: WizardStep = WizardStep.WELCOME
     completed_steps: list[WizardStep] = field(default_factory=list)
     skipped_steps: list[WizardStep] = field(default_factory=list)
@@ -65,7 +67,7 @@ class WizardState:
             "skipped_steps": [s.value for s in self.skipped_steps],
             "collected_data": self.collected_data,
             "started_at": self.started_at.isoformat(),
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
         }
 
     @classmethod
@@ -76,14 +78,21 @@ class WizardState:
             completed_steps=[WizardStep(s) for s in data.get("completed_steps", [])],
             skipped_steps=[WizardStep(s) for s in data.get("skipped_steps", [])],
             collected_data=data.get("collected_data", {}),
-            started_at=datetime.fromisoformat(data["started_at"]) if data.get("started_at") else datetime.now(),
-            completed_at=datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None
+            started_at=(
+                datetime.fromisoformat(data["started_at"])
+                if data.get("started_at")
+                else datetime.now()
+            ),
+            completed_at=(
+                datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None
+            ),
         )
 
 
 @dataclass
 class StepResult:
     """Result of a wizard step."""
+
     success: bool
     message: str = ""
     data: dict[str, Any] = field(default_factory=dict)
@@ -138,7 +147,7 @@ class FirstRunWizard:
     def save_state(self):
         """Save wizard state to file."""
         try:
-            with open(self.STATE_FILE, 'w') as f:
+            with open(self.STATE_FILE, "w") as f:
                 json.dump(self.state.to_dict(), f, indent=2)
         except Exception as e:
             logger.warning(f"Could not save wizard state: {e}")
@@ -146,7 +155,7 @@ class FirstRunWizard:
     def save_config(self):
         """Save configuration to file."""
         try:
-            with open(self.CONFIG_FILE, 'w') as f:
+            with open(self.CONFIG_FILE, "w") as f:
                 json.dump(self.config, f, indent=2)
         except Exception as e:
             logger.warning(f"Could not save config: {e}")
@@ -223,7 +232,8 @@ class FirstRunWizard:
         self._clear_screen()
         self._print_banner()
 
-        print("""
+        print(
+            """
 Welcome to Cortex Linux! 🚀
 
 Cortex is an AI-powered package manager that understands natural language.
@@ -234,11 +244,12 @@ Instead of memorizing apt commands, just tell Cortex what you want:
   $ cortex remove unused packages
 
 This wizard will help you set up Cortex in just a few minutes.
-""")
+"""
+        )
 
         if self.interactive:
             response = self._prompt("Press Enter to continue (or 'q' to quit): ")
-            if response.lower() == 'q':
+            if response.lower() == "q":
                 return StepResult(success=False, message="User cancelled")
 
         return StepResult(success=True)
@@ -248,14 +259,16 @@ This wizard will help you set up Cortex in just a few minutes.
         self._clear_screen()
         self._print_header("Step 1: API Configuration")
 
-        print("""
+        print(
+            """
 Cortex uses AI to understand your commands. You can use:
 
   1. Claude API (Anthropic) - Recommended
   2. OpenAI API
   3. Local LLM (Ollama) - Free, runs on your machine
   4. Skip for now (limited functionality)
-""")
+"""
+        )
 
         # Check for existing API keys
         existing_claude = os.environ.get("ANTHROPIC_API_KEY")
@@ -265,25 +278,19 @@ Cortex uses AI to understand your commands. You can use:
             print("✓ Found existing Claude API key: ********...")
             self.config["api_provider"] = "anthropic"
             self.config["api_key_configured"] = True
-            return StepResult(
-                success=True,
-                data={"api_provider": "anthropic"}
-            )
+            return StepResult(success=True, data={"api_provider": "anthropic"})
 
         if existing_openai:
             print("✓ Found existing OpenAI API key: ********...")
             self.config["api_provider"] = "openai"
             self.config["api_key_configured"] = True
-            return StepResult(
-                success=True,
-                data={"api_provider": "openai"}
-            )
+            return StepResult(success=True, data={"api_provider": "openai"})
 
         if not self.interactive:
             return StepResult(
                 success=True,
                 message="Non-interactive mode - skipping API setup",
-                data={"api_provider": "none"}
+                data={"api_provider": "none"},
             )
 
         choice = self._prompt("Choose an option [1-4]: ", default="1")
@@ -296,10 +303,7 @@ Cortex uses AI to understand your commands. You can use:
             return self._setup_ollama()
         else:
             print("\n⚠ Running without AI - you'll only have basic apt functionality")
-            return StepResult(
-                success=True,
-                data={"api_provider": "none"}
-            )
+            return StepResult(success=True, data={"api_provider": "none"})
 
     def _setup_claude_api(self) -> StepResult:
         """Set up Claude API."""
@@ -357,12 +361,10 @@ Cortex uses AI to understand your commands. You can use:
 
             install = self._prompt("\nInstall Ollama now? [y/N]: ", default="n")
 
-            if install.lower() == 'y':
+            if install.lower() == "y":
                 try:
                     subprocess.run(
-                        "curl -fsSL https://ollama.ai/install.sh | sh",
-                        shell=True,
-                        check=True
+                        "curl -fsSL https://ollama.ai/install.sh | sh", shell=True, check=True
                     )
                     print("\n✓ Ollama installed!")
                 except subprocess.CalledProcessError:
@@ -372,10 +374,7 @@ Cortex uses AI to understand your commands. You can use:
         # Pull a small model
         print("\nPulling llama3.2 model (this may take a few minutes)...")
         try:
-            subprocess.run(
-                ["ollama", "pull", "llama3.2"],
-                check=True
-            )
+            subprocess.run(["ollama", "pull", "llama3.2"], check=True)
             print("\n✓ Model ready!")
         except subprocess.CalledProcessError:
             print("\n⚠ Could not pull model - you can do this later with: ollama pull llama3.2")
@@ -401,13 +400,13 @@ Cortex uses AI to understand your commands. You can use:
         print(f"  Disk: {hardware_info.get('disk_gb', 'Unknown')} GB available")
 
         # GPU-specific setup
-        if hardware_info.get('gpu_vendor') == 'nvidia':
+        if hardware_info.get("gpu_vendor") == "nvidia":
             print("\n🎮 NVIDIA GPU detected!")
 
             if self.interactive:
                 setup_cuda = self._prompt("Set up CUDA support? [Y/n]: ", default="y")
-                if setup_cuda.lower() != 'n':
-                    hardware_info['setup_cuda'] = True
+                if setup_cuda.lower() != "n":
+                    hardware_info["setup_cuda"] = True
                     print("  → CUDA will be configured when needed")
 
         self.config["hardware"] = hardware_info
@@ -423,60 +422,52 @@ Cortex uses AI to understand your commands. You can use:
 
         # CPU
         try:
-            with open('/proc/cpuinfo') as f:
+            with open("/proc/cpuinfo") as f:
                 for line in f:
-                    if 'model name' in line:
-                        info['cpu'] = line.split(':')[1].strip()
+                    if "model name" in line:
+                        info["cpu"] = line.split(":")[1].strip()
                         break
         except:
-            info['cpu'] = 'Unknown'
+            info["cpu"] = "Unknown"
 
         # RAM
         try:
-            with open('/proc/meminfo') as f:
+            with open("/proc/meminfo") as f:
                 for line in f:
-                    if 'MemTotal' in line:
+                    if "MemTotal" in line:
                         kb = int(line.split()[1])
-                        info['ram_gb'] = round(kb / 1024 / 1024, 1)
+                        info["ram_gb"] = round(kb / 1024 / 1024, 1)
                         break
         except:
-            info['ram_gb'] = 0
+            info["ram_gb"] = 0
 
         # GPU
         try:
-            result = subprocess.run(
-                ['lspci'],
-                capture_output=True,
-                text=True
-            )
-            for line in result.stdout.split('\n'):
-                if 'VGA' in line or '3D' in line:
-                    if 'NVIDIA' in line.upper():
-                        info['gpu'] = line.split(':')[-1].strip()
-                        info['gpu_vendor'] = 'nvidia'
-                    elif 'AMD' in line.upper():
-                        info['gpu'] = line.split(':')[-1].strip()
-                        info['gpu_vendor'] = 'amd'
-                    elif 'Intel' in line.upper():
-                        info['gpu'] = line.split(':')[-1].strip()
-                        info['gpu_vendor'] = 'intel'
+            result = subprocess.run(["lspci"], capture_output=True, text=True)
+            for line in result.stdout.split("\n"):
+                if "VGA" in line or "3D" in line:
+                    if "NVIDIA" in line.upper():
+                        info["gpu"] = line.split(":")[-1].strip()
+                        info["gpu_vendor"] = "nvidia"
+                    elif "AMD" in line.upper():
+                        info["gpu"] = line.split(":")[-1].strip()
+                        info["gpu_vendor"] = "amd"
+                    elif "Intel" in line.upper():
+                        info["gpu"] = line.split(":")[-1].strip()
+                        info["gpu_vendor"] = "intel"
                     break
         except:
-            info['gpu'] = 'None detected'
+            info["gpu"] = "None detected"
 
         # Disk
         try:
-            result = subprocess.run(
-                ['df', '-BG', '/'],
-                capture_output=True,
-                text=True
-            )
-            lines = result.stdout.strip().split('\n')
+            result = subprocess.run(["df", "-BG", "/"], capture_output=True, text=True)
+            lines = result.stdout.strip().split("\n")
             if len(lines) > 1:
                 parts = lines[1].split()
-                info['disk_gb'] = int(parts[3].rstrip('G'))
+                info["disk_gb"] = int(parts[3].rstrip("G"))
         except:
-            info['disk_gb'] = 0
+            info["disk_gb"] = 0
 
         return info
 
@@ -493,7 +484,7 @@ Cortex uses AI to understand your commands. You can use:
             # Confirmation mode
             print("By default, Cortex will ask for confirmation before installing packages.")
             auto_confirm = self._prompt("Enable auto-confirm for installs? [y/N]: ", default="n")
-            preferences['auto_confirm'] = auto_confirm.lower() == 'y'
+            preferences["auto_confirm"] = auto_confirm.lower() == "y"
 
             # Verbosity
             print("\nVerbosity level:")
@@ -501,18 +492,18 @@ Cortex uses AI to understand your commands. You can use:
             print("  2. Normal (recommended)")
             print("  3. Verbose (detailed output)")
             verbosity = self._prompt("Choose [1-3]: ", default="2")
-            preferences['verbosity'] = ['quiet', 'normal', 'verbose'][int(verbosity) - 1] if verbosity.isdigit() else 'normal'
+            preferences["verbosity"] = (
+                ["quiet", "normal", "verbose"][int(verbosity) - 1]
+                if verbosity.isdigit()
+                else "normal"
+            )
 
             # Offline mode
             print("\nEnable offline caching? (stores AI responses for offline use)")
             offline = self._prompt("Enable caching? [Y/n]: ", default="y")
-            preferences['enable_cache'] = offline.lower() != 'n'
+            preferences["enable_cache"] = offline.lower() != "n"
         else:
-            preferences = {
-                'auto_confirm': False,
-                'verbosity': 'normal',
-                'enable_cache': True
-            }
+            preferences = {"auto_confirm": False, "verbosity": "normal", "enable_cache": True}
 
         self.config["preferences"] = preferences
 
@@ -534,11 +525,11 @@ Cortex uses AI to understand your commands. You can use:
 
         setup = self._prompt("Set up shell integration? [Y/n]: ", default="y")
 
-        if setup.lower() == 'n':
+        if setup.lower() == "n":
             return StepResult(success=True, data={"shell_integration": False})
 
         # Detect shell
-        shell = os.environ.get('SHELL', '/bin/bash')
+        shell = os.environ.get("SHELL", "/bin/bash")
         shell_name = os.path.basename(shell)
 
         print(f"\nDetected shell: {shell_name}")
@@ -547,15 +538,17 @@ Cortex uses AI to understand your commands. You can use:
         completion_script = self._generate_completion_script(shell_name)
         completion_file = self.CONFIG_DIR / f"completion.{shell_name}"
 
-        with open(completion_file, 'w') as f:
+        with open(completion_file, "w") as f:
             f.write(completion_script)
 
         # Add to shell config
         shell_config = self._get_shell_config(shell_name)
-        source_line = f'\n# Cortex completion\n[ -f "{completion_file}" ] && source "{completion_file}"\n'
+        source_line = (
+            f'\n# Cortex completion\n[ -f "{completion_file}" ] && source "{completion_file}"\n'
+        )
 
         if shell_config.exists():
-            with open(shell_config, 'a') as f:
+            with open(shell_config, "a") as f:
                 f.write(source_line)
             print(f"\n✓ Added completion to {shell_config}")
 
@@ -569,8 +562,8 @@ Cortex uses AI to understand your commands. You can use:
 
     def _generate_completion_script(self, shell: str) -> str:
         """Generate shell completion script."""
-        if shell in ['bash', 'sh']:
-            return '''
+        if shell in ["bash", "sh"]:
+            return """
 # Cortex bash completion
 _cortex_completion() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
@@ -581,9 +574,9 @@ _cortex_completion() {
     fi
 }
 complete -F _cortex_completion cortex
-'''
-        elif shell == 'zsh':
-            return '''
+"""
+        elif shell == "zsh":
+            return """
 # Cortex zsh completion
 _cortex() {
     local commands=(
@@ -599,9 +592,9 @@ _cortex() {
     _describe 'command' commands
 }
 compdef _cortex cortex
-'''
-        elif shell == 'fish':
-            return '''
+"""
+        elif shell == "fish":
+            return """
 # Cortex fish completion
 complete -c cortex -f
 complete -c cortex -n "__fish_use_subcommand" -a "install" -d "Install packages"
@@ -610,18 +603,18 @@ complete -c cortex -n "__fish_use_subcommand" -a "update" -d "Update system"
 complete -c cortex -n "__fish_use_subcommand" -a "search" -d "Search packages"
 complete -c cortex -n "__fish_use_subcommand" -a "undo" -d "Undo last operation"
 complete -c cortex -n "__fish_use_subcommand" -a "history" -d "Show history"
-'''
+"""
         return "# No completion available for this shell"
 
     def _get_shell_config(self, shell: str) -> Path:
         """Get the shell config file path."""
         home = Path.home()
         configs = {
-            'bash': home / '.bashrc',
-            'zsh': home / '.zshrc',
-            'fish': home / '.config' / 'fish' / 'config.fish',
+            "bash": home / ".bashrc",
+            "zsh": home / ".zshrc",
+            "fish": home / ".config" / "fish" / "config.fish",
         }
-        return configs.get(shell, home / '.profile')
+        return configs.get(shell, home / ".profile")
 
     def _step_test_command(self) -> StepResult:
         """Run a test command."""
@@ -637,7 +630,7 @@ complete -c cortex -n "__fish_use_subcommand" -a "history" -d "Show history"
 
         run_test = self._prompt("Run test now? [Y/n]: ", default="y")
 
-        if run_test.lower() == 'n':
+        if run_test.lower() == "n":
             return StepResult(success=True, data={"test_completed": False})
 
         print("\n" + "=" * 50)
@@ -651,7 +644,7 @@ complete -c cortex -n "__fish_use_subcommand" -a "history" -d "Show history"
                     ["cortex", "search", "text", "editors"],
                     capture_output=True,
                     text=True,
-                    timeout=30
+                    timeout=30,
                 )
                 print(result.stdout)
                 if result.returncode == 0:
@@ -661,10 +654,7 @@ complete -c cortex -n "__fish_use_subcommand" -a "history" -d "Show history"
             else:
                 # Fallback to apt search
                 print("Running: apt search text-editor")
-                subprocess.run(
-                    ["apt", "search", "text-editor"],
-                    timeout=30
-                )
+                subprocess.run(["apt", "search", "text-editor"], timeout=30)
                 print("\n✓ Basic functionality working!")
         except subprocess.TimeoutExpired:
             print("\n⚠ Test timed out - this is OK, Cortex is still usable")
@@ -686,7 +676,8 @@ complete -c cortex -n "__fish_use_subcommand" -a "history" -d "Show history"
         # Save all config
         self.save_config()
 
-        print("""
+        print(
+            """
 Cortex is ready to use! Here are some things to try:
 
   📦 Install packages:
@@ -706,17 +697,18 @@ Cortex is ready to use! Here are some things to try:
   📖 Get help:
      cortex help
 
-""")
+"""
+        )
 
         # Show configuration summary
         print("Configuration Summary:")
         print(f"  • API Provider: {self.config.get('api_provider', 'none')}")
 
-        hardware = self.config.get('hardware', {})
-        if hardware.get('gpu_vendor'):
+        hardware = self.config.get("hardware", {})
+        if hardware.get("gpu_vendor"):
             print(f"  • GPU: {hardware.get('gpu', 'Detected')}")
 
-        prefs = self.config.get('preferences', {})
+        prefs = self.config.get("preferences", {})
         print(f"  • Verbosity: {prefs.get('verbosity', 'normal')}")
         print(f"  • Caching: {'enabled' if prefs.get('enable_cache') else 'disabled'}")
 
@@ -730,7 +722,7 @@ Cortex is ready to use! Here are some things to try:
     def _clear_screen(self):
         """Clear the terminal screen."""
         if self.interactive:
-            os.system('clear' if os.name == 'posix' else 'cls')
+            os.system("clear" if os.name == "posix" else "cls")
 
     def _print_banner(self):
         """Print the Cortex banner."""
@@ -768,14 +760,14 @@ Cortex is ready to use! Here are some things to try:
 
     def _save_env_var(self, name: str, value: str):
         """Save environment variable to shell config."""
-        shell = os.environ.get('SHELL', '/bin/bash')
+        shell = os.environ.get("SHELL", "/bin/bash")
         shell_name = os.path.basename(shell)
         config_file = self._get_shell_config(shell_name)
 
         export_line = f'\nexport {name}="{value}"\n'  # nosec - intentional user config storage
 
         try:
-            with open(config_file, 'a') as f:
+            with open(config_file, "a") as f:
                 f.write(export_line)
 
             # Also set for current session

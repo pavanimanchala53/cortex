@@ -32,7 +32,7 @@ def example_dry_run():
     executor = SandboxExecutor()
 
     # Preview what would execute
-    result = executor.execute('apt-get update', dry_run=True)
+    result = executor.execute("apt-get update", dry_run=True)
     print(f"Preview: {result.preview}")
     print(f"Output: {result.stdout}")
 
@@ -44,9 +44,9 @@ def example_blocked_commands():
     executor = SandboxExecutor()
 
     dangerous_commands = [
-        'rm -rf /',
-        'dd if=/dev/zero of=/dev/sda',
-        'mkfs.ext4 /dev/sda1',
+        "rm -rf /",
+        "dd if=/dev/zero of=/dev/sda",
+        "mkfs.ext4 /dev/sda1",
     ]
 
     for cmd in dangerous_commands:
@@ -65,7 +65,7 @@ def example_with_rollback():
 
     # Execute a command that might fail
     try:
-        result = executor.execute('invalid-command-that-fails')
+        result = executor.execute("invalid-command-that-fails")
         if result.failed:
             print("Command failed, rollback triggered")
             print(f"Stderr: {result.stderr}")
@@ -94,7 +94,7 @@ def example_audit_logging():
         print(f"  - {entry['timestamp']}: {entry['command']} (type: {entry['type']})")
 
     # Save audit log
-    executor.save_audit_log('audit_log.json')
+    executor.save_audit_log("audit_log.json")
     print("Audit log saved to audit_log.json")
 
 
@@ -104,10 +104,7 @@ def example_resource_limits():
 
     # Create executor with custom limits
     executor = SandboxExecutor(
-        max_cpu_cores=1,
-        max_memory_mb=1024,
-        max_disk_mb=512,
-        timeout_seconds=60
+        max_cpu_cores=1, max_memory_mb=1024, max_disk_mb=512, timeout_seconds=60
     )
 
     print(f"CPU limit: {executor.max_cpu_cores} cores")
@@ -124,8 +121,8 @@ def example_sudo_commands():
 
     # Allowed sudo commands (package installation)
     allowed_sudo = [
-        'sudo apt-get install python3',
-        'sudo pip install numpy',
+        "sudo apt-get install python3",
+        "sudo pip install numpy",
     ]
 
     for cmd in allowed_sudo:
@@ -137,8 +134,8 @@ def example_sudo_commands():
 
     # Blocked sudo commands
     blocked_sudo = [
-        'sudo rm -rf /',
-        'sudo chmod 777 /',
+        "sudo rm -rf /",
+        "sudo chmod 777 /",
     ]
 
     for cmd in blocked_sudo:
@@ -178,11 +175,11 @@ def example_command_validation():
 
     test_commands = [
         ('echo "test"', True),
-        ('python3 --version', True),
-        ('rm -rf /', False),
-        ('sudo apt-get install python3', True),
-        ('sudo rm -rf /', False),
-        ('nc -l 1234', False),  # Not whitelisted
+        ("python3 --version", True),
+        ("rm -rf /", False),
+        ("sudo apt-get install python3", True),
+        ("sudo rm -rf /", False),
+        ("nc -l 1234", False),  # Not whitelisted
     ]
 
     for cmd, expected_valid in test_commands:
@@ -222,6 +219,5 @@ def main():
     print("  ✓ Sudo restrictions enforced")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

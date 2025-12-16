@@ -18,6 +18,7 @@ class TestCortexLogger(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_basic_logging(self):
@@ -42,12 +43,13 @@ class TestCortexLogger(unittest.TestCase):
             with open(json_log) as f:
                 last_line = f.readlines()[-1]
                 entry = json.loads(last_line)
-                self.assertIn('context', entry)
+                self.assertIn("context", entry)
 
     def test_operation_timing(self):
         """Test operation timing"""
         self.logger.start_operation("test_op")
         import time
+
         time.sleep(0.01)
         duration = self.logger.end_operation("test_op")
 
@@ -68,9 +70,9 @@ class TestCortexLogger(unittest.TestCase):
         self.logger.info("Test message")
         stats = self.logger.get_log_stats()
 
-        self.assertIn('total_size_bytes', stats)
-        self.assertIn('file_count', stats)
-        self.assertGreater(stats['file_count'], 0)
+        self.assertIn("total_size_bytes", stats)
+        self.assertIn("file_count", stats)
+        self.assertGreater(stats["file_count"], 0)
 
     def test_search_logs(self):
         """Test log search"""
@@ -88,6 +90,7 @@ class TestCortexLogger(unittest.TestCase):
         result = self.logger.export_logs(str(export_path), format="json")
 
         self.assertTrue(Path(result).exists())
+
 
 if __name__ == "__main__":
     unittest.main()

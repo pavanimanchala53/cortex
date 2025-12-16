@@ -211,15 +211,15 @@ class TestProgressTracker:
         assert formatted == "calculating..."
 
         # Mock estimate
-        with patch.object(tracker, 'estimate_remaining_time', return_value=45):
+        with patch.object(tracker, "estimate_remaining_time", return_value=45):
             formatted = tracker.format_time_remaining()
             assert "45s" in formatted
 
-        with patch.object(tracker, 'estimate_remaining_time', return_value=125):
+        with patch.object(tracker, "estimate_remaining_time", return_value=125):
             formatted = tracker.format_time_remaining()
             assert "2m" in formatted
 
-        with patch.object(tracker, 'estimate_remaining_time', return_value=7350):
+        with patch.object(tracker, "estimate_remaining_time", return_value=7350):
             formatted = tracker.format_time_remaining()
             assert "2h" in formatted
 
@@ -267,13 +267,13 @@ class TestProgressTracker:
 
     def test_notifications_disabled_when_plyer_unavailable(self):
         """Test that notifications gracefully fail when plyer is unavailable."""
-        with patch('progress_tracker.PLYER_AVAILABLE', False):
+        with patch("progress_tracker.PLYER_AVAILABLE", False):
             tracker = ProgressTracker("Test", enable_notifications=True)
             # Should not raise an error
             tracker.complete(success=True)
 
-    @patch('progress_tracker.PLYER_AVAILABLE', True)
-    @patch('progress_tracker.plyer_notification')
+    @patch("progress_tracker.PLYER_AVAILABLE", True)
+    @patch("progress_tracker.plyer_notification")
     def test_notifications_sent(self, mock_notification):
         """Test that notifications are sent when enabled."""
         mock_notification.notify = Mock()
@@ -285,7 +285,7 @@ class TestProgressTracker:
         # Should have sent a notification
         mock_notification.notify.assert_called_once()
         call_args = mock_notification.notify.call_args
-        assert "Test Complete" in call_args[1]['title']
+        assert "Test Complete" in call_args[1]["title"]
 
     def test_render_text_progress(self):
         """Test plain text progress rendering."""
@@ -307,6 +307,7 @@ class TestAsyncProgress:
 
     async def test_run_with_progress_success(self):
         """Test running async operation with progress."""
+
         async def test_operation(tracker):
             idx = tracker.add_stage("Test")
             tracker.start_stage(idx)
@@ -322,6 +323,7 @@ class TestAsyncProgress:
 
     async def test_run_with_progress_failure(self):
         """Test async operation that fails."""
+
         async def test_operation(tracker):
             raise ValueError("Test error")
 
@@ -334,6 +336,7 @@ class TestAsyncProgress:
 
     async def test_run_with_progress_cancelled(self):
         """Test cancelling async operation."""
+
         async def test_operation(tracker):
             await asyncio.sleep(10)
 
@@ -354,23 +357,23 @@ class TestRichProgressTracker:
 
     def test_rich_tracker_requires_rich(self):
         """Test that RichProgressTracker requires rich library."""
-        with patch('progress_tracker.RICH_AVAILABLE', False), pytest.raises(ImportError):
+        with patch("progress_tracker.RICH_AVAILABLE", False), pytest.raises(ImportError):
             RichProgressTracker("Test")
 
-    @patch('progress_tracker.RICH_AVAILABLE', True)
+    @patch("progress_tracker.RICH_AVAILABLE", True)
     def test_rich_tracker_creation(self):
         """Test creating a rich progress tracker."""
-        with patch('progress_tracker.Console'), patch('progress_tracker.Progress'):
+        with patch("progress_tracker.Console"), patch("progress_tracker.Progress"):
             tracker = RichProgressTracker("Test")
             assert tracker.operation_name == "Test"
             assert tracker.progress_obj is None
 
     @pytest.mark.asyncio
-    @patch('progress_tracker.RICH_AVAILABLE', True)
+    @patch("progress_tracker.RICH_AVAILABLE", True)
     async def test_live_progress_context(self):
         """Test live progress context manager."""
-        with patch('progress_tracker.Console'):
-            with patch('progress_tracker.Progress') as MockProgress:
+        with patch("progress_tracker.Console"):
+            with patch("progress_tracker.Progress") as MockProgress:
                 mock_progress = MagicMock()
                 MockProgress.return_value = mock_progress
                 mock_progress.__enter__ = Mock(return_value=mock_progress)
@@ -552,7 +555,7 @@ class TestEdgeCases:
 
     def test_render_without_rich(self):
         """Test rendering when rich is not available."""
-        with patch('progress_tracker.RICH_AVAILABLE', False):
+        with patch("progress_tracker.RICH_AVAILABLE", False):
             tracker = ProgressTracker("Test")
             tracker.add_stage("Stage 1")
 
@@ -561,6 +564,5 @@ class TestEdgeCases:
             assert "Stage 1" in text
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
-
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

@@ -9,7 +9,7 @@ import os
 import sys
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from progress_tracker import ProgressTracker, run_with_progress
 from sandbox_executor import SandboxExecutor
@@ -69,10 +69,7 @@ async def demo_package_installation(tracker: ProgressTracker, package_name: str 
         while bytes_downloaded < total_bytes:
             await asyncio.sleep(0.15)
             bytes_downloaded = min(bytes_downloaded + chunk_size, total_bytes)
-            tracker.update_stage_progress(
-                download_idx,
-                progress=bytes_downloaded / total_bytes
-            )
+            tracker.update_stage_progress(download_idx, progress=bytes_downloaded / total_bytes)
             tracker.display_progress()
 
         tracker.complete_stage(download_idx)
@@ -179,10 +176,7 @@ async def main():
     # Demo 1: Single package installation
     print("\n[Demo 1] Single Package Installation")
     print("-" * 60)
-    tracker1 = ProgressTracker(
-        "Installing PostgreSQL",
-        enable_notifications=True
-    )
+    tracker1 = ProgressTracker("Installing PostgreSQL", enable_notifications=True)
     await run_with_progress(tracker1, demo_package_installation, package_name="postgresql")
 
     await asyncio.sleep(2)
@@ -191,8 +185,7 @@ async def main():
     print("\n\n[Demo 2] Multiple Package Installation")
     print("-" * 60)
     tracker2 = ProgressTracker(
-        "Installing Development Tools",
-        enable_notifications=False  # Disable notifications for demo
+        "Installing Development Tools", enable_notifications=False  # Disable notifications for demo
     )
     await run_with_progress(tracker2, demo_multi_package_installation)
 
@@ -201,10 +194,7 @@ async def main():
     # Demo 3: Failed installation
     print("\n\n[Demo 3] Handling Failures")
     print("-" * 60)
-    tracker3 = ProgressTracker(
-        "Installing Problematic Package",
-        enable_notifications=False
-    )
+    tracker3 = ProgressTracker("Installing Problematic Package", enable_notifications=False)
 
     try:
         await run_with_progress(tracker3, demo_failed_installation)
@@ -216,10 +206,9 @@ async def main():
     print("=" * 60)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\n\nDemo cancelled by user.")
         sys.exit(0)
-

@@ -13,18 +13,18 @@ logger = logging.getLogger(__name__)
 
 # Dangerous patterns that should never be executed
 DANGEROUS_PATTERNS = [
-    r'rm\s+-rf\s+[/\*]',
-    r'rm\s+--no-preserve-root',
-    r'dd\s+if=.*of=/dev/',
-    r'curl\s+.*\|\s*sh',
-    r'curl\s+.*\|\s*bash',
-    r'wget\s+.*\|\s*sh',
-    r'wget\s+.*\|\s*bash',
-    r'\beval\s+',
-    r'base64\s+-d\s+.*\|',
-    r'>\s*/etc/',
-    r'chmod\s+777',
-    r'chmod\s+\+s',
+    r"rm\s+-rf\s+[/\*]",
+    r"rm\s+--no-preserve-root",
+    r"dd\s+if=.*of=/dev/",
+    r"curl\s+.*\|\s*sh",
+    r"curl\s+.*\|\s*bash",
+    r"wget\s+.*\|\s*sh",
+    r"wget\s+.*\|\s*bash",
+    r"\beval\s+",
+    r"base64\s+-d\s+.*\|",
+    r">\s*/etc/",
+    r"chmod\s+777",
+    r"chmod\s+\+s",
 ]
 
 
@@ -73,7 +73,7 @@ class InstallationCoordinator:
         stop_on_error: bool = True,
         enable_rollback: bool = False,
         log_file: str | None = None,
-        progress_callback: Callable[[int, int, InstallationStep], None] | None = None
+        progress_callback: Callable[[int, int, InstallationStep], None] | None = None,
     ):
         """Initialize an installation run with optional logging and rollback."""
         self.timeout = timeout
@@ -87,8 +87,7 @@ class InstallationCoordinator:
 
         self.steps = [
             InstallationStep(
-                command=cmd,
-                description=descriptions[i] if descriptions else f"Step {i+1}"
+                command=cmd, description=descriptions[i] if descriptions else f"Step {i+1}"
             )
             for i, cmd in enumerate(commands)
         ]
@@ -104,7 +103,7 @@ class InstallationCoordinator:
         stop_on_error: bool = True,
         enable_rollback: bool | None = None,
         log_file: str | None = None,
-        progress_callback: Callable[[int, int, InstallationStep], None] | None = None
+        progress_callback: Callable[[int, int, InstallationStep], None] | None = None,
     ) -> "InstallationCoordinator":
         """Create a coordinator from a structured plan produced by an LLM.
 
@@ -134,7 +133,9 @@ class InstallationCoordinator:
             descriptions,
             timeout=timeout,
             stop_on_error=stop_on_error,
-            enable_rollback=enable_rollback if enable_rollback is not None else bool(rollback_commands),
+            enable_rollback=(
+                enable_rollback if enable_rollback is not None else bool(rollback_commands)
+            ),
             log_file=log_file,
             progress_callback=progress_callback,
         )
@@ -150,8 +151,8 @@ class InstallationCoordinator:
 
         if self.log_file:
             try:
-                with open(self.log_file, 'a', encoding='utf-8') as f:
-                    f.write(log_entry + '\n')
+                with open(self.log_file, "a", encoding="utf-8") as f:
+                    f.write(log_entry + "\n")
             except Exception:
                 pass
 
@@ -192,11 +193,7 @@ class InstallationCoordinator:
             # For complex shell commands (pipes, redirects), shell=True is needed
             # Simple commands could use shlex.split() with shell=False
             result = subprocess.run(
-                step.command,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout
+                step.command, shell=True, capture_output=True, text=True, timeout=self.timeout
             )
 
             step.return_code = result.returncode
@@ -236,12 +233,7 @@ class InstallationCoordinator:
         for cmd in reversed(self.rollback_commands):
             try:
                 self._log(f"Rollback: {cmd}")
-                subprocess.run(
-                    cmd,
-                    shell=True,
-                    capture_output=True,
-                    timeout=self.timeout
-                )
+                subprocess.run(cmd, shell=True, capture_output=True, timeout=self.timeout)
             except Exception as e:
                 self._log(f"Rollback failed: {cmd} - {str(e)}")
 
@@ -265,7 +257,7 @@ class InstallationCoordinator:
             if not success:
                 failed_step_index = i
                 if self.stop_on_error:
-                    for remaining_step in self.steps[i+1:]:
+                    for remaining_step in self.steps[i + 1 :]:
                         remaining_step.status = StepStatus.SKIPPED
 
                     if self.enable_rollback:
@@ -279,7 +271,7 @@ class InstallationCoordinator:
                         steps=self.steps,
                         total_duration=total_duration,
                         failed_step=i,
-                        error_message=step.error or "Command failed"
+                        error_message=step.error or "Command failed",
                     )
 
         total_duration = time.time() - start_time
@@ -295,7 +287,9 @@ class InstallationCoordinator:
             steps=self.steps,
             total_duration=total_duration,
             failed_step=failed_step_index,
-            error_message=self.steps[failed_step_index].error if failed_step_index is not None else None
+            error_message=(
+                self.steps[failed_step_index].error if failed_step_index is not None else None
+            ),
         )
 
     def verify_installation(self, verify_commands: list[str]) -> dict[str, bool]:
@@ -306,13 +300,7 @@ class InstallationCoordinator:
 
         for cmd in verify_commands:
             try:
-                result = subprocess.run(
-                    cmd,
-                    shell=True,
-                    capture_output=True,
-                    text=True,
-                    timeout=30
-                )
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
                 success = result.returncode == 0
                 verification_results[cmd] = success
                 self._log(f"Verification {cmd}: {'PASS' if success else 'FAIL'}")
@@ -339,61 +327,52 @@ class InstallationCoordinator:
                     "description": s.description,
                     "status": s.status.value,
                     "duration": s.duration(),
-                    "return_code": s.return_code
+                    "return_code": s.return_code,
                 }
                 for s in self.steps
-            ]
+            ],
         }
 
     def export_log(self, filepath: str):
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(self.get_summary(), f, indent=2)
 
 
 def install_docker() -> InstallationResult:
     plan = [
-        {
-            "command": "apt update",
-            "description": "Update package lists"
-        },
+        {"command": "apt update", "description": "Update package lists"},
         {
             "command": "apt install -y apt-transport-https ca-certificates curl software-properties-common",
-            "description": "Install dependencies"
+            "description": "Install dependencies",
         },
         {
             "command": "install -m 0755 -d /etc/apt/keyrings",
-            "description": "Create keyrings directory"
+            "description": "Create keyrings directory",
         },
         {
             "command": "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg",
-            "description": "Add Docker GPG key"
+            "description": "Add Docker GPG key",
         },
-        {
-            "command": "chmod a+r /etc/apt/keyrings/docker.gpg",
-            "description": "Set key permissions"
-        },
+        {"command": "chmod a+r /etc/apt/keyrings/docker.gpg", "description": "Set key permissions"},
         {
             "command": 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null',
-            "description": "Add Docker repository"
+            "description": "Add Docker repository",
         },
-        {
-            "command": "apt update",
-            "description": "Update package lists again"
-        },
+        {"command": "apt update", "description": "Update package lists again"},
         {
             "command": "apt install -y docker-ce docker-ce-cli containerd.io",
-            "description": "Install Docker packages"
+            "description": "Install Docker packages",
         },
         {
             "command": "systemctl start docker",
             "description": "Start Docker service",
-            "rollback": "systemctl stop docker"
+            "rollback": "systemctl stop docker",
         },
         {
             "command": "systemctl enable docker",
             "description": "Enable Docker on boot",
-            "rollback": "systemctl disable docker"
-        }
+            "rollback": "systemctl disable docker",
+        },
     ]
 
     coordinator = InstallationCoordinator.from_plan(plan, timeout=300, stop_on_error=True)
@@ -411,25 +390,13 @@ def example_cuda_install_plan() -> list[dict[str, str]]:
     """Return a sample CUDA installation plan for LLM integration tests."""
 
     return [
-        {
-            "command": "apt update",
-            "description": "Refresh package repositories"
-        },
-        {
-            "command": "apt install -y build-essential dkms",
-            "description": "Install build tooling"
-        },
+        {"command": "apt update", "description": "Refresh package repositories"},
+        {"command": "apt install -y build-essential dkms", "description": "Install build tooling"},
         {
             "command": "sh cuda_installer.run --silent",
             "description": "Install CUDA drivers",
-            "rollback": "rm -rf /usr/local/cuda"
+            "rollback": "rm -rf /usr/local/cuda",
         },
-        {
-            "command": "nvidia-smi",
-            "description": "Verify GPU driver status"
-        },
-        {
-            "command": "nvcc --version",
-            "description": "Validate CUDA compiler installation"
-        }
+        {"command": "nvidia-smi", "description": "Verify GPU driver status"},
+        {"command": "nvcc --version", "description": "Validate CUDA compiler installation"},
     ]

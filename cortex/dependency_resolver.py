@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Dependency:
     """Represents a package dependency"""
+
     name: str
     version: str | None = None
     reason: str = ""  # Why this dependency is needed
@@ -27,6 +28,7 @@ class Dependency:
 @dataclass
 class DependencyGraph:
     """Complete dependency graph for a package"""
+
     package_name: str
     direct_dependencies: list[Dependency]
     all_dependencies: list[Dependency]
@@ -39,38 +41,26 @@ class DependencyResolver:
 
     # Common dependency patterns
     DEPENDENCY_PATTERNS = {
-        'docker': {
-            'direct': ['containerd', 'docker-ce-cli', 'docker-buildx-plugin'],
-            'system': ['iptables', 'ca-certificates', 'curl', 'gnupg']
+        "docker": {
+            "direct": ["containerd", "docker-ce-cli", "docker-buildx-plugin"],
+            "system": ["iptables", "ca-certificates", "curl", "gnupg"],
         },
-        'postgresql': {
-            'direct': ['postgresql-common', 'postgresql-client'],
-            'optional': ['postgresql-contrib']
+        "postgresql": {
+            "direct": ["postgresql-common", "postgresql-client"],
+            "optional": ["postgresql-contrib"],
         },
-        'nginx': {
-            'direct': [],
-            'runtime': ['libc6', 'libpcre3', 'zlib1g']
+        "nginx": {"direct": [], "runtime": ["libc6", "libpcre3", "zlib1g"]},
+        "mysql-server": {
+            "direct": ["mysql-client", "mysql-common"],
+            "system": ["libaio1", "libmecab2"],
         },
-        'mysql-server': {
-            'direct': ['mysql-client', 'mysql-common'],
-            'system': ['libaio1', 'libmecab2']
+        "python3-pip": {"direct": ["python3", "python3-setuptools"], "system": ["python3-wheel"]},
+        "nodejs": {"direct": [], "optional": ["npm"]},
+        "redis-server": {"direct": [], "runtime": ["libc6", "libjemalloc2"]},
+        "apache2": {
+            "direct": ["apache2-bin", "apache2-data", "apache2-utils"],
+            "runtime": ["libapr1", "libaprutil1"],
         },
-        'python3-pip': {
-            'direct': ['python3', 'python3-setuptools'],
-            'system': ['python3-wheel']
-        },
-        'nodejs': {
-            'direct': [],
-            'optional': ['npm']
-        },
-        'redis-server': {
-            'direct': [],
-            'runtime': ['libc6', 'libjemalloc2']
-        },
-        'apache2': {
-            'direct': ['apache2-bin', 'apache2-data', 'apache2-utils'],
-            'runtime': ['libapr1', 'libaprutil1']
-        }
     }
 
     def __init__(self):
@@ -81,12 +71,7 @@ class DependencyResolver:
     def _run_command(self, cmd: list[str]) -> tuple[bool, str, str]:
         """Execute command and return success, stdout, stderr"""
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             return (result.returncode == 0, result.stdout, result.stderr)
         except subprocess.TimeoutExpired:
             return (False, "", "Command timed out")
@@ -96,11 +81,11 @@ class DependencyResolver:
     def _refresh_installed_packages(self) -> None:
         """Refresh cache of installed packages"""
         logger.info("Refreshing installed packages cache...")
-        success, stdout, _ = self._run_command(['dpkg', '-l'])
+        success, stdout, _ = self._run_command(["dpkg", "-l"])
 
         if success:
-            for line in stdout.split('\n'):
-                if line.startswith('ii'):
+            for line in stdout.split("\n"):
+                if line.startswith("ii"):
                     parts = line.split()
                     if len(parts) >= 2:
                         self.installed_packages.add(parts[1])
@@ -116,9 +101,7 @@ class DependencyResolver:
         if not self.is_package_installed(package_name):
             return None
 
-        success, stdout, _ = self._run_command([
-            'dpkg-query', '-W', '-f=${Version}', package_name
-        ])
+        success, stdout, _ = self._run_command(["dpkg-query", "-W", "-f=${Version}", package_name])
 
         return stdout.strip() if success else None
 
@@ -126,47 +109,51 @@ class DependencyResolver:
         """Get dependencies from apt-cache"""
         dependencies = []
 
-        success, stdout, stderr = self._run_command([
-            'apt-cache', 'depends', package_name
-        ])
+        success, stdout, stderr = self._run_command(["apt-cache", "depends", package_name])
 
         if not success:
             logger.warning(f"Could not get dependencies for {package_name}: {stderr}")
             return dependencies
 
         current_dep_name = None
-        for line in stdout.split('\n'):
+        for line in stdout.split("\n"):
             line = line.strip()
 
             # Parse dependency lines
-            if line.startswith('Depends:'):
-                current_dep_name = line.split(':', 1)[1].strip()
+            if line.startswith("Depends:"):
+                current_dep_name = line.split(":", 1)[1].strip()
                 # Handle alternatives (package1 | package2)
-                if '|' in current_dep_name:
-                    current_dep_name = current_dep_name.split('|')[0].strip()
+                if "|" in current_dep_name:
+                    current_dep_name = current_dep_name.split("|")[0].strip()
 
                 # Remove version constraints
-                current_dep_name = re.sub(r'\s*\(.*?\)', '', current_dep_name)
+                current_dep_name = re.sub(r"\s*\(.*?\)", "", current_dep_name)
 
                 is_installed = self.is_package_installed(current_dep_name)
-                installed_ver = self.get_installed_version(current_dep_name) if is_installed else None
+                installed_ver = (
+                    self.get_installed_version(current_dep_name) if is_installed else None
+                )
 
-                dependencies.append(Dependency(
-                    name=current_dep_name,
-                    reason="Required dependency",
-                    is_satisfied=is_installed,
-                    installed_version=installed_ver
-                ))
+                dependencies.append(
+                    Dependency(
+                        name=current_dep_name,
+                        reason="Required dependency",
+                        is_satisfied=is_installed,
+                        installed_version=installed_ver,
+                    )
+                )
 
-            elif line.startswith('Recommends:'):
-                dep_name = line.split(':', 1)[1].strip()
-                dep_name = re.sub(r'\s*\(.*?\)', '', dep_name)
+            elif line.startswith("Recommends:"):
+                dep_name = line.split(":", 1)[1].strip()
+                dep_name = re.sub(r"\s*\(.*?\)", "", dep_name)
 
-                dependencies.append(Dependency(
-                    name=dep_name,
-                    reason="Recommended package",
-                    is_satisfied=self.is_package_installed(dep_name)
-                ))
+                dependencies.append(
+                    Dependency(
+                        name=dep_name,
+                        reason="Recommended package",
+                        is_satisfied=self.is_package_installed(dep_name),
+                    )
+                )
 
         return dependencies
 
@@ -180,41 +167,39 @@ class DependencyResolver:
         pattern = self.DEPENDENCY_PATTERNS[package_name]
 
         # Direct dependencies
-        for dep in pattern.get('direct', []):
+        for dep in pattern.get("direct", []):
             is_installed = self.is_package_installed(dep)
-            dependencies.append(Dependency(
-                name=dep,
-                reason="Required dependency",
-                is_satisfied=is_installed,
-                installed_version=self.get_installed_version(dep) if is_installed else None
-            ))
+            dependencies.append(
+                Dependency(
+                    name=dep,
+                    reason="Required dependency",
+                    is_satisfied=is_installed,
+                    installed_version=self.get_installed_version(dep) if is_installed else None,
+                )
+            )
 
         # System dependencies
-        for dep in pattern.get('system', []):
+        for dep in pattern.get("system", []):
             is_installed = self.is_package_installed(dep)
-            dependencies.append(Dependency(
-                name=dep,
-                reason="System dependency",
-                is_satisfied=is_installed,
-                installed_version=self.get_installed_version(dep) if is_installed else None
-            ))
+            dependencies.append(
+                Dependency(
+                    name=dep,
+                    reason="System dependency",
+                    is_satisfied=is_installed,
+                    installed_version=self.get_installed_version(dep) if is_installed else None,
+                )
+            )
 
         # Optional dependencies
-        for dep in pattern.get('optional', []):
+        for dep in pattern.get("optional", []):
             is_installed = self.is_package_installed(dep)
-            dependencies.append(Dependency(
-                name=dep,
-                reason="Optional enhancement",
-                is_satisfied=is_installed
-            ))
+            dependencies.append(
+                Dependency(name=dep, reason="Optional enhancement", is_satisfied=is_installed)
+            )
 
         return dependencies
 
-    def resolve_dependencies(
-        self,
-        package_name: str,
-        recursive: bool = True
-    ) -> DependencyGraph:
+    def resolve_dependencies(self, package_name: str, recursive: bool = True) -> DependencyGraph:
         """
         Resolve all dependencies for a package
 
@@ -259,17 +244,14 @@ class DependencyResolver:
         conflicts = self._detect_conflicts(all_dependencies)
 
         # Calculate installation order
-        installation_order = self._calculate_installation_order(
-            package_name,
-            all_dependencies
-        )
+        installation_order = self._calculate_installation_order(package_name, all_dependencies)
 
         graph = DependencyGraph(
             package_name=package_name,
             direct_dependencies=direct_dependencies,
             all_dependencies=all_dependencies,
             conflicts=conflicts,
-            installation_order=installation_order
+            installation_order=installation_order,
         )
 
         # Cache result
@@ -283,10 +265,10 @@ class DependencyResolver:
 
         # Check for known conflicts
         conflict_patterns = {
-            'mysql-server': ['mariadb-server'],
-            'mariadb-server': ['mysql-server'],
-            'apache2': ['nginx'],  # Can coexist but conflict on port 80
-            'nginx': ['apache2']
+            "mysql-server": ["mariadb-server"],
+            "mariadb-server": ["mysql-server"],
+            "apache2": ["nginx"],  # Can coexist but conflict on port 80
+            "nginx": ["apache2"],
         }
 
         dep_names = {dep.name for dep in dependencies}
@@ -300,9 +282,7 @@ class DependencyResolver:
         return conflicts
 
     def _calculate_installation_order(
-        self,
-        package_name: str,
-        dependencies: list[Dependency]
+        self, package_name: str, dependencies: list[Dependency]
     ) -> list[str]:
         """Calculate optimal installation order"""
         # Simple topological sort based on dependency levels
@@ -314,7 +294,7 @@ class DependencyResolver:
         for dep in dependencies:
             if not dep.is_satisfied:
                 # Simple heuristic: system packages first, then others
-                if 'lib' in dep.name or dep.name in ['ca-certificates', 'curl', 'gnupg']:
+                if "lib" in dep.name or dep.name in ["ca-certificates", "curl", "gnupg"]:
                     no_deps.append(dep.name)
                 else:
                     has_deps.append(dep.name)
@@ -339,14 +319,14 @@ class DependencyResolver:
         missing = self.get_missing_dependencies(package_name)
 
         plan = {
-            'package': package_name,
-            'total_dependencies': len(graph.all_dependencies),
-            'missing_dependencies': len(missing),
-            'satisfied_dependencies': len(graph.all_dependencies) - len(missing),
-            'conflicts': graph.conflicts,
-            'installation_order': graph.installation_order,
-            'install_commands': self._generate_install_commands(graph.installation_order),
-            'estimated_time_minutes': len(missing) * 0.5  # Rough estimate
+            "package": package_name,
+            "total_dependencies": len(graph.all_dependencies),
+            "missing_dependencies": len(missing),
+            "satisfied_dependencies": len(graph.all_dependencies) - len(missing),
+            "conflicts": graph.conflicts,
+            "installation_order": graph.installation_order,
+            "install_commands": self._generate_install_commands(graph.installation_order),
+            "estimated_time_minutes": len(missing) * 0.5,  # Rough estimate
         }
 
         return plan
@@ -384,14 +364,14 @@ class DependencyResolver:
         graph = self.resolve_dependencies(package_name)
 
         graph_dict = {
-            'package_name': graph.package_name,
-            'direct_dependencies': [asdict(dep) for dep in graph.direct_dependencies],
-            'all_dependencies': [asdict(dep) for dep in graph.all_dependencies],
-            'conflicts': graph.conflicts,
-            'installation_order': graph.installation_order
+            "package_name": graph.package_name,
+            "direct_dependencies": [asdict(dep) for dep in graph.direct_dependencies],
+            "all_dependencies": [asdict(dep) for dep in graph.all_dependencies],
+            "conflicts": graph.conflicts,
+            "installation_order": graph.installation_order,
         }
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(graph_dict, f, indent=2)
 
         logger.info(f"Dependency graph exported to {filepath}")
@@ -401,32 +381,12 @@ class DependencyResolver:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Resolve package dependencies"
-    )
-    parser.add_argument(
-        'package',
-        help='Package name to analyze'
-    )
-    parser.add_argument(
-        '--tree',
-        action='store_true',
-        help='Show dependency tree'
-    )
-    parser.add_argument(
-        '--plan',
-        action='store_true',
-        help='Generate installation plan'
-    )
-    parser.add_argument(
-        '--export',
-        help='Export dependency graph to JSON file'
-    )
-    parser.add_argument(
-        '--missing',
-        action='store_true',
-        help='Show only missing dependencies'
-    )
+    parser = argparse.ArgumentParser(description="Resolve package dependencies")
+    parser.add_argument("package", help="Package name to analyze")
+    parser.add_argument("--tree", action="store_true", help="Show dependency tree")
+    parser.add_argument("--plan", action="store_true", help="Generate installation plan")
+    parser.add_argument("--export", help="Export dependency graph to JSON file")
+    parser.add_argument("--missing", action="store_true", help="Show only missing dependencies")
 
     args = parser.parse_args()
 
@@ -447,20 +407,20 @@ if __name__ == "__main__":
         print(f"✅ Already satisfied: {plan['satisfied_dependencies']}")
         print(f"❌ Need to install: {plan['missing_dependencies']}")
 
-        if plan['conflicts']:
+        if plan["conflicts"]:
             print("\n⚠️  Conflicts detected:")
-            for pkg1, pkg2 in plan['conflicts']:
+            for pkg1, pkg2 in plan["conflicts"]:
                 print(f"   - {pkg1} conflicts with {pkg2}")
 
         print("\n📝 Installation order:")
-        for i, pkg in enumerate(plan['installation_order'], 1):
+        for i, pkg in enumerate(plan["installation_order"], 1):
             status = "✅" if resolver.is_package_installed(pkg) else "❌"
             print(f"   {i}. {status} {pkg}")
 
         print(f"\n⏱️  Estimated time: {plan['estimated_time_minutes']:.1f} minutes")
 
         print("\n💻 Commands to run:")
-        for cmd in plan['install_commands']:
+        for cmd in plan["install_commands"]:
             print(f"   {cmd}")
 
     if args.missing:

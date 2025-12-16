@@ -35,6 +35,7 @@ class AcceleratorType(Enum):
 @dataclass
 class Accelerator:
     """Represents a single AI accelerator (GPU/NPU)."""
+
     type: AcceleratorType
     name: str
     vendor: str
@@ -48,13 +49,14 @@ class Accelerator:
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
-        d['type'] = self.type.value
+        d["type"] = self.type.value
         return d
 
 
 @dataclass
 class HardwareProfile:
     """Complete hardware profile for AI workloads."""
+
     accelerators: list[Accelerator] = field(default_factory=list)
     total_vram_gb: float = 0.0
     total_system_ram_gb: float = 0.0
@@ -67,7 +69,9 @@ class HardwareProfile:
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
-        d['accelerators'] = [a.to_dict() if isinstance(a, Accelerator) else a for a in self.accelerators]
+        d["accelerators"] = [
+            a.to_dict() if isinstance(a, Accelerator) else a for a in self.accelerators
+        ]
         return d
 
     def to_json(self, indent: int = 2) -> str:
@@ -77,12 +81,7 @@ class HardwareProfile:
 def run_command(cmd: list[str], timeout: int = 10) -> str | None:
     """Run a shell command and return stdout, or None on failure."""
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         if result.returncode == 0:
             return result.stdout.strip()
     except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError):
@@ -95,17 +94,19 @@ def detect_nvidia_gpus() -> list[Accelerator]:
     gpus = []
 
     # Check if nvidia-smi exists
-    output = run_command([
-        "nvidia-smi",
-        "--query-gpu=index,name,memory.total,driver_version,pci.bus_id,compute_cap",
-        "--format=csv,noheader,nounits"
-    ])
+    output = run_command(
+        [
+            "nvidia-smi",
+            "--query-gpu=index,name,memory.total,driver_version,pci.bus_id,compute_cap",
+            "--format=csv,noheader,nounits",
+        ]
+    )
 
     if not output:
         return gpus
 
-    for line in output.strip().split('\n'):
-        parts = [p.strip() for p in line.split(',')]
+    for line in output.strip().split("\n"):
+        parts = [p.strip() for p in line.split(",")]
         if len(parts) >= 6:
             try:
                 vram_mb = float(parts[2])
@@ -118,7 +119,7 @@ def detect_nvidia_gpus() -> list[Accelerator]:
                     driver_version=parts[3],
                     pci_bus_id=parts[4],
                     index=int(parts[0]),
-                    features=["cuda", "tensor_cores"] if float(parts[5]) >= 7.0 else ["cuda"]
+                    features=["cuda", "tensor_cores"] if float(parts[5]) >= 7.0 else ["cuda"],
                 )
                 gpus.append(gpu)
             except (ValueError, IndexError):
@@ -145,7 +146,7 @@ def detect_amd_gpus() -> list[Accelerator]:
                         vendor="AMD",
                         vram_gb=round(card_info.get("VRAM Total Memory (B)", 0) / (1024**3), 1),
                         index=int(card_id.replace("card", "")),
-                        features=["rocm", "hip"]
+                        features=["rocm", "hip"],
                     )
                     gpus.append(gpu)
         except (json.JSONDecodeError, KeyError):
@@ -155,16 +156,13 @@ def detect_amd_gpus() -> list[Accelerator]:
     if not gpus:
         output = run_command(["lspci", "-nn"])
         if output:
-            for line in output.split('\n'):
+            for line in output.split("\n"):
                 if "VGA" in line and ("AMD" in line or "ATI" in line):
                     # Extract device name
-                    match = re.search(r'\[AMD[^\]]*\]\s*([^[]+)', line)
+                    match = re.search(r"\[AMD[^\]]*\]\s*([^[]+)", line)
                     name = match.group(1).strip() if match else "AMD GPU"
                     gpu = Accelerator(
-                        type=AcceleratorType.AMD_GPU,
-                        name=name,
-                        vendor="AMD",
-                        features=["rocm"]
+                        type=AcceleratorType.AMD_GPU, name=name, vendor="AMD", features=["rocm"]
                     )
                     gpus.append(gpu)
 
@@ -179,13 +177,13 @@ def detect_intel_gpus() -> list[Accelerator]:
     output = run_command(["lspci", "-nn"])
 
     if output:
-        for line in output.split('\n'):
+        for line in output.split("\n"):
             if "VGA" in line and "Intel" in line:
                 # Check if Arc GPU
                 is_arc = "Arc" in line or "DG2" in line or "Alchemist" in line
 
                 # Extract device name
-                match = re.search(r'Intel Corporation\s*([^[]+)', line)
+                match = re.search(r"Intel Corporation\s*([^[]+)", line)
                 name = match.group(1).strip() if match else "Intel GPU"
 
                 gpu = Accelerator(
@@ -193,7 +191,7 @@ def detect_intel_gpus() -> list[Accelerator]:
                     name=name,
                     vendor="Intel",
                     features=["oneapi", "level_zero"] if is_arc else ["vaapi"],
-                    vram_gb=16.0 if is_arc else 0.0  # Arc A770 has 16GB
+                    vram_gb=16.0 if is_arc else 0.0,  # Arc A770 has 16GB
                 )
                 gpus.append(gpu)
 
@@ -207,13 +205,17 @@ def detect_intel_npu() -> list[Accelerator]:
     # Check for Intel NPU device
     output = run_command(["lspci", "-nn"])
 
-    if output and "Intel" in output and ("NPU" in output or "Neural" in output or "AI Boost" in output):
+    if (
+        output
+        and "Intel" in output
+        and ("NPU" in output or "Neural" in output or "AI Boost" in output)
+    ):
         npu = Accelerator(
             type=AcceleratorType.INTEL_NPU,
             name="Intel NPU",
             vendor="Intel",
             compute_units=10,  # Typical TOPS for Meteor Lake
-            features=["openvino", "int8", "int4"]
+            features=["openvino", "int8", "int4"],
         )
         npus.append(npu)
 
@@ -225,7 +227,7 @@ def detect_intel_npu() -> list[Accelerator]:
                     type=AcceleratorType.INTEL_NPU,
                     name="Intel NPU",
                     vendor="Intel",
-                    features=["openvino"]
+                    features=["openvino"],
                 )
                 npus.append(npu)
                 break
@@ -241,13 +243,17 @@ def detect_amd_npu() -> list[Accelerator]:
     if os.path.exists("/dev/accel/accel0"):
         # Check if it's AMD XDNA
         output = run_command(["lspci", "-nn"])
-        if output and "AMD" in output and ("XDNA" in output or "Ryzen AI" in output or "IPU" in output):
+        if (
+            output
+            and "AMD" in output
+            and ("XDNA" in output or "Ryzen AI" in output or "IPU" in output)
+        ):
             npu = Accelerator(
                 type=AcceleratorType.AMD_NPU,
                 name="AMD Ryzen AI NPU",
                 vendor="AMD",
                 compute_units=16,  # TOPS
-                features=["xdna", "int8", "int4"]
+                features=["xdna", "int8", "int4"],
             )
             npus.append(npu)
 
@@ -288,7 +294,7 @@ def detect_apple_silicon() -> list[Accelerator]:
             vendor="Apple",
             vram_gb=unified_memory,  # Unified memory
             compute_units=gpu_cores,
-            features=["metal", "coreml", "neural_engine", "unified_memory"]
+            features=["metal", "coreml", "neural_engine", "unified_memory"],
         )
         accelerators.append(accelerator)
 
@@ -345,43 +351,23 @@ def recommend_models(total_vram_gb: float, system_ram_gb: float, has_npu: bool) 
     available_gb = total_vram_gb if total_vram_gb > 0 else system_ram_gb * 0.7
 
     if available_gb >= 48:
-        recommendations.extend([
-            "llama3.1-70b-q4",
-            "qwen2.5-72b-q4",
-            "deepseek-coder-33b",
-            "mixtral-8x22b-q4"
-        ])
+        recommendations.extend(
+            ["llama3.1-70b-q4", "qwen2.5-72b-q4", "deepseek-coder-33b", "mixtral-8x22b-q4"]
+        )
 
     if available_gb >= 24:
-        recommendations.extend([
-            "llama3.1-70b-q2",
-            "qwen2.5-32b",
-            "codellama-34b-q4",
-            "deepseek-coder-33b-q4"
-        ])
+        recommendations.extend(
+            ["llama3.1-70b-q2", "qwen2.5-32b", "codellama-34b-q4", "deepseek-coder-33b-q4"]
+        )
 
     if available_gb >= 16:
-        recommendations.extend([
-            "llama3.1-8b",
-            "mistral-7b",
-            "qwen2.5-14b",
-            "codellama-13b"
-        ])
+        recommendations.extend(["llama3.1-8b", "mistral-7b", "qwen2.5-14b", "codellama-13b"])
 
     if available_gb >= 8:
-        recommendations.extend([
-            "llama3.2-3b",
-            "phi-3-mini",
-            "gemma-2b",
-            "qwen2.5-7b-q4"
-        ])
+        recommendations.extend(["llama3.2-3b", "phi-3-mini", "gemma-2b", "qwen2.5-7b-q4"])
 
     if available_gb >= 4:
-        recommendations.extend([
-            "tinyllama-1.1b",
-            "phi-2",
-            "qwen2.5-1.5b"
-        ])
+        recommendations.extend(["tinyllama-1.1b", "phi-2", "qwen2.5-1.5b"])
 
     if has_npu:
         recommendations.append("phi-3-mini-npu")
@@ -434,8 +420,10 @@ def generate_optimization_hints(profile: HardwareProfile) -> list[str]:
             hints.append("Unified memory allows larger models than VRAM alone suggests")
 
     # NPU hints
-    has_npu = any(acc.type in [AcceleratorType.INTEL_NPU, AcceleratorType.AMD_NPU]
-                  for acc in profile.accelerators)
+    has_npu = any(
+        acc.type in [AcceleratorType.INTEL_NPU, AcceleratorType.AMD_NPU]
+        for acc in profile.accelerators
+    )
     if has_npu:
         hints.append("NPU detected - use INT4/INT8 quantized models for best NPU performance")
         hints.append("Hybrid CPU+NPU inference available for larger models")
@@ -469,14 +457,14 @@ def detect_accelerators() -> HardwareProfile:
     profile.cpu_model, profile.cpu_cores = get_cpu_info()
 
     # Check for NPU
-    has_npu = any(acc.type in [AcceleratorType.INTEL_NPU, AcceleratorType.AMD_NPU]
-                  for acc in profile.accelerators)
+    has_npu = any(
+        acc.type in [AcceleratorType.INTEL_NPU, AcceleratorType.AMD_NPU]
+        for acc in profile.accelerators
+    )
 
     # Generate recommendations
     profile.recommended_models = recommend_models(
-        profile.total_vram_gb,
-        profile.total_system_ram_gb,
-        has_npu
+        profile.total_vram_gb, profile.total_system_ram_gb, has_npu
     )
 
     # Calculate limits

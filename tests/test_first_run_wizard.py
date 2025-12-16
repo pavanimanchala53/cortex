@@ -27,8 +27,13 @@ class TestWizardStep:
     def test_all_steps_exist(self):
         """Test all expected steps exist."""
         expected = [
-            "WELCOME", "API_SETUP", "HARDWARE_DETECTION",
-            "PREFERENCES", "SHELL_INTEGRATION", "TEST_COMMAND", "COMPLETE"
+            "WELCOME",
+            "API_SETUP",
+            "HARDWARE_DETECTION",
+            "PREFERENCES",
+            "SHELL_INTEGRATION",
+            "TEST_COMMAND",
+            "COMPLETE",
         ]
 
         actual = [s.name for s in WizardStep]
@@ -113,7 +118,7 @@ class TestWizardState:
             "skipped_steps": [],
             "collected_data": {"api": "anthropic"},
             "started_at": "2024-01-15T10:00:00",
-            "completed_at": None
+            "completed_at": None,
         }
 
         state = WizardState.from_dict(data)
@@ -135,19 +140,13 @@ class TestStepResult:
 
     def test_result_with_data(self):
         """Test result with data."""
-        result = StepResult(
-            success=True,
-            data={"api_provider": "anthropic"}
-        )
+        result = StepResult(success=True, data={"api_provider": "anthropic"})
 
         assert result.data["api_provider"] == "anthropic"
 
     def test_result_with_skip(self):
         """Test result with skip directive."""
-        result = StepResult(
-            success=True,
-            skip_to=WizardStep.TEST_COMMAND
-        )
+        result = StepResult(success=True, skip_to=WizardStep.TEST_COMMAND)
 
         assert result.skip_to == WizardStep.TEST_COMMAND
 
@@ -201,10 +200,7 @@ class TestFirstRunWizard:
 
     def test_save_config(self, wizard):
         """Test config persistence."""
-        wizard.config = {
-            "api_provider": "anthropic",
-            "preferences": {"verbosity": "normal"}
-        }
+        wizard.config = {"api_provider": "anthropic", "preferences": {"verbosity": "normal"}}
 
         wizard.save_config()
 
@@ -222,7 +218,7 @@ class TestFirstRunWizard:
         assert wizard.SETUP_COMPLETE_FILE.exists()
         assert wizard.state.completed_at is not None
 
-    @patch('os.system')
+    @patch("os.system")
     def test_clear_screen(self, mock_system, wizard):
         """Test screen clearing."""
         wizard.interactive = True
@@ -282,12 +278,11 @@ class TestWizardSteps:
         assert result.success is True
         assert result.data.get("api_provider") == "none"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_step_hardware_detection(self, mock_run, wizard):
         """Test hardware detection step."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="00:02.0 VGA compatible controller: Intel Corporation"
+            returncode=0, stdout="00:02.0 VGA compatible controller: Intel Corporation"
         )
 
         result = wizard._step_hardware_detection()
@@ -323,7 +318,7 @@ class TestWizardSteps:
         """Test completion step."""
         wizard.config = {
             "api_provider": "anthropic",
-            "preferences": {"verbosity": "normal", "enable_cache": True}
+            "preferences": {"verbosity": "normal", "enable_cache": True},
         }
 
         result = wizard._step_complete()
@@ -340,19 +335,18 @@ class TestHardwareDetection:
         wizard.CONFIG_DIR = tmp_path
         return wizard
 
-    @patch('builtins.open')
-    @patch('subprocess.run')
+    @patch("builtins.open")
+    @patch("subprocess.run")
     def test_detect_hardware_full(self, mock_run, mock_open, wizard):
         """Test full hardware detection."""
         # Mock /proc/cpuinfo
-        mock_open.return_value.__enter__.return_value.__iter__ = lambda s: iter([
-            "model name : Intel Core i7-9700K\n"
-        ])
+        mock_open.return_value.__enter__.return_value.__iter__ = lambda s: iter(
+            ["model name : Intel Core i7-9700K\n"]
+        )
 
         # Mock lspci
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="00:02.0 VGA compatible controller: NVIDIA GeForce RTX 4090\n"
+            returncode=0, stdout="00:02.0 VGA compatible controller: NVIDIA GeForce RTX 4090\n"
         )
 
         # Can't fully test due to file reading, but ensure method runs
@@ -360,12 +354,12 @@ class TestHardwareDetection:
 
         assert isinstance(info, dict)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_detect_nvidia_gpu(self, mock_run, wizard):
         """Test NVIDIA GPU detection."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout="01:00.0 VGA compatible controller: NVIDIA Corporation GeForce RTX 4090"
+            stdout="01:00.0 VGA compatible controller: NVIDIA Corporation GeForce RTX 4090",
         )
 
         info = wizard._detect_hardware()
@@ -432,7 +426,7 @@ class TestGlobalFunctions:
         result = needs_first_run()
         assert isinstance(result, bool)
 
-    @patch.object(FirstRunWizard, 'run')
+    @patch.object(FirstRunWizard, "run")
     def test_run_wizard(self, mock_run):
         """Test run_wizard function."""
         mock_run.return_value = True
@@ -489,7 +483,7 @@ class TestEdgeCases:
         """Test prompt handling EOF."""
         wizard.interactive = True
 
-        with patch('builtins.input', side_effect=EOFError):
+        with patch("builtins.input", side_effect=EOFError):
             result = wizard._prompt("Test: ", default="default")
 
         assert result == "default"
@@ -498,7 +492,7 @@ class TestEdgeCases:
         """Test prompt handling Ctrl+C."""
         wizard.interactive = True
 
-        with patch('builtins.input', side_effect=KeyboardInterrupt):
+        with patch("builtins.input", side_effect=KeyboardInterrupt):
             result = wizard._prompt("Test: ", default="default")
 
         assert result == "default"
@@ -517,7 +511,7 @@ class TestIntegration:
         wizard._ensure_config_dir()
         return wizard
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test-12345678"})
     def test_complete_wizard_flow(self, mock_run, wizard):
         """Test complete wizard flow in non-interactive mode."""

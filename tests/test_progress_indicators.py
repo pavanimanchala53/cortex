@@ -71,10 +71,7 @@ class TestOperationContext:
 
     def test_default_values(self):
         """Test default values."""
-        context = OperationContext(
-            operation_type=OperationType.INSTALL,
-            title="Test Operation"
-        )
+        context = OperationContext(operation_type=OperationType.INSTALL, title="Test Operation")
 
         assert context.operation_type == OperationType.INSTALL
         assert context.title == "Test Operation"
@@ -90,7 +87,7 @@ class TestOperationContext:
             steps=[
                 OperationStep("Step1", "First"),
                 OperationStep("Step2", "Second"),
-            ]
+            ],
         )
 
         assert context.total_steps == 2
@@ -104,7 +101,7 @@ class TestOperationContext:
                 OperationStep("Step1", "First", status="completed"),
                 OperationStep("Step2", "Second", status="running"),
                 OperationStep("Step3", "Third", status="pending"),
-            ]
+            ],
         )
 
         assert context.completed_steps == 1
@@ -119,17 +116,14 @@ class TestOperationContext:
                 OperationStep("Step2", "Second", status="completed"),
                 OperationStep("Step3", "Third", status="pending"),
                 OperationStep("Step4", "Fourth", status="pending"),
-            ]
+            ],
         )
 
         assert context.overall_progress == 0.5
 
     def test_overall_progress_empty(self):
         """Test overall_progress with no steps."""
-        context = OperationContext(
-            operation_type=OperationType.INSTALL,
-            title="Test"
-        )
+        context = OperationContext(operation_type=OperationType.INSTALL, title="Test")
 
         assert context.overall_progress == 0.0
 
@@ -440,9 +434,17 @@ class TestOperationTypes:
     def test_all_operation_types(self):
         """Test all operation types are defined."""
         expected = [
-            "INSTALL", "REMOVE", "UPDATE", "DOWNLOAD",
-            "CONFIGURE", "VERIFY", "ANALYZE", "LLM_QUERY",
-            "DEPENDENCY_RESOLVE", "ROLLBACK", "GENERIC"
+            "INSTALL",
+            "REMOVE",
+            "UPDATE",
+            "DOWNLOAD",
+            "CONFIGURE",
+            "VERIFY",
+            "ANALYZE",
+            "LLM_QUERY",
+            "DEPENDENCY_RESOLVE",
+            "ROLLBACK",
+            "GENERIC",
         ]
 
         actual = [op.name for op in OperationType]
@@ -548,12 +550,15 @@ class TestIntegration:
     def test_full_installation_flow(self, indicator, capsys):
         """Test a complete installation flow."""
         # Create multi-step tracker
-        tracker = indicator.multi_step([
-            {"name": "Download", "description": "Downloading package"},
-            {"name": "Verify", "description": "Verifying checksum"},
-            {"name": "Install", "description": "Installing files"},
-            {"name": "Configure", "description": "Configuring service"},
-        ], "Installing nginx")
+        tracker = indicator.multi_step(
+            [
+                {"name": "Download", "description": "Downloading package"},
+                {"name": "Verify", "description": "Verifying checksum"},
+                {"name": "Install", "description": "Installing files"},
+                {"name": "Configure", "description": "Configuring service"},
+            ],
+            "Installing nginx",
+        )
 
         # Simulate installation
         for i in range(4):

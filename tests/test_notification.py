@@ -21,11 +21,7 @@ class TestNotificationManager(unittest.TestCase):
         self.mgr.config_file = self.mgr.config_dir / "test_config.json"
 
         # Default config
-        self.mgr.config = {
-            "dnd_start": "22:00",
-            "dnd_end": "08:00",
-            "enabled": True
-        }
+        self.mgr.config = {"dnd_start": "22:00", "dnd_end": "08:00", "enabled": True}
         self.mgr._save_config()
         self.mgr.history = []
 
@@ -36,18 +32,18 @@ class TestNotificationManager(unittest.TestCase):
 
     def test_dnd_logic_active(self):
         """Scenario: Current time is 23:00 (DND Active)."""
-        with patch.object(self.mgr, '_get_current_time') as mock_time:
+        with patch.object(self.mgr, "_get_current_time") as mock_time:
             mock_time.return_value = datetime.time(23, 0)
             self.assertTrue(self.mgr.is_dnd_active())
 
     def test_dnd_logic_inactive(self):
         """Scenario: Current time is 12:00 (DND Inactive)."""
-        with patch.object(self.mgr, '_get_current_time') as mock_time:
+        with patch.object(self.mgr, "_get_current_time") as mock_time:
             mock_time.return_value = datetime.time(12, 0)
             self.assertFalse(self.mgr.is_dnd_active())
 
-    @patch('subprocess.run')
-    @patch('shutil.which')
+    @patch("subprocess.run")
+    @patch("shutil.which")
     def test_send_notification_with_actions(self, mock_which, mock_run):
         """
         Test if notify-send is called with correct ACTION arguments.
@@ -56,7 +52,7 @@ class TestNotificationManager(unittest.TestCase):
         mock_which.return_value = "/usr/bin/notify-send"
 
         # Disable DND
-        with patch.object(self.mgr, '_get_current_time') as mock_time:
+        with patch.object(self.mgr, "_get_current_time") as mock_time:
             mock_time.return_value = datetime.time(12, 0)
 
             # Send with actions
@@ -81,7 +77,8 @@ class TestNotificationManager(unittest.TestCase):
             data = json.load(f)
 
         self.assertTrue(len(data) > 0)
-        self.assertEqual(data[-1]['title'], "History Test")
+        self.assertEqual(data[-1]["title"], "History Test")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main(verbosity=2)

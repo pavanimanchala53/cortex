@@ -43,11 +43,7 @@ def show_banner(show_version: bool = True):
     if show_version:
         content += f"\n[dim]v{VERSION}[/dim]"
 
-    console.print(Panel(
-        content,
-        border_style="cyan",
-        padding=(0, 2)
-    ))
+    console.print(Panel(content, border_style="cyan", padding=(0, 2)))
 
 
 def cx_print(message: str, status: str = "info"):
@@ -96,7 +92,11 @@ def cx_table_header():
     """
     Returns styled header for package tables.
     """
-    return "[bold cyan]Package[/bold cyan]", "[bold cyan]Version[/bold cyan]", "[bold cyan]Action[/bold cyan]"
+    return (
+        "[bold cyan]Package[/bold cyan]",
+        "[bold cyan]Version[/bold cyan]",
+        "[bold cyan]Action[/bold cyan]",
+    )
 
 
 def show_welcome():

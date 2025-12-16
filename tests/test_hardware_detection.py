@@ -68,12 +68,7 @@ class TestCPUInfo:
 
     def test_to_dict(self):
         """Test serialization."""
-        cpu = CPUInfo(
-            vendor=CPUVendor.INTEL,
-            model="Intel Core i7-9700K",
-            cores=8,
-            threads=8
-        )
+        cpu = CPUInfo(vendor=CPUVendor.INTEL, model="Intel Core i7-9700K", cores=8, threads=8)
 
         data = cpu.to_dict()
 
@@ -99,7 +94,7 @@ class TestGPUInfo:
             vendor=GPUVendor.NVIDIA,
             model="GeForce RTX 4090",
             memory_mb=24576,
-            driver_version="535.104.05"
+            driver_version="535.104.05",
         )
 
         data = gpu.to_dict()
@@ -176,11 +171,7 @@ class TestNetworkInfo:
 
     def test_to_dict(self):
         """Test serialization."""
-        net = NetworkInfo(
-            interface="eth0",
-            ip_address="192.168.1.100",
-            is_wireless=False
-        )
+        net = NetworkInfo(interface="eth0", ip_address="192.168.1.100", is_wireless=False)
 
         data = net.to_dict()
 
@@ -203,10 +194,7 @@ class TestSystemInfo:
     def test_to_dict(self):
         """Test full serialization."""
         info = SystemInfo(
-            hostname="testhost",
-            kernel_version="5.15.0",
-            distro="Ubuntu",
-            distro_version="24.04"
+            hostname="testhost", kernel_version="5.15.0", distro="Ubuntu", distro_version="24.04"
         )
         info.cpu = CPUInfo(vendor=CPUVendor.INTEL, model="i7", cores=8)
         info.gpu = [GPUInfo(vendor=GPUVendor.NVIDIA, model="RTX 4090")]
@@ -239,8 +227,8 @@ class TestHardwareDetector:
         detector = HardwareDetector(use_cache=True)
         assert detector.use_cache is True
 
-    @patch('subprocess.run')
-    @patch('builtins.open', mock_open(read_data="model name : Intel Core\nMemTotal: 32768 kB"))
+    @patch("subprocess.run")
+    @patch("builtins.open", mock_open(read_data="model name : Intel Core\nMemTotal: 32768 kB"))
     def test_detect_returns_system_info(self, mock_run, detector):
         """Test detect returns SystemInfo."""
         mock_run.return_value = MagicMock(returncode=0, stdout="")
@@ -249,7 +237,7 @@ class TestHardwareDetector:
 
         assert isinstance(info, SystemInfo)
 
-    @patch('os.cpu_count')
+    @patch("os.cpu_count")
     def test_get_cpu_cores(self, mock_count, detector):
         """Test quick CPU core detection."""
         mock_count.return_value = 8
@@ -258,7 +246,7 @@ class TestHardwareDetector:
 
         assert cores == 8
 
-    @patch('os.cpu_count')
+    @patch("os.cpu_count")
     def test_get_cpu_cores_none(self, mock_count, detector):
         """Test CPU cores when None returned."""
         mock_count.return_value = None
@@ -267,58 +255,53 @@ class TestHardwareDetector:
 
         assert cores == 1
 
-    @patch('builtins.open', mock_open(read_data="MemTotal: 33554432 kB\n"))
+    @patch("builtins.open", mock_open(read_data="MemTotal: 33554432 kB\n"))
     def test_get_ram_gb(self, detector):
         """Test quick RAM detection."""
         ram = detector._get_ram_gb()
 
         assert ram == 32.0
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_has_nvidia_gpu_true(self, mock_run, detector):
         """Test NVIDIA GPU detection when present."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="01:00.0 VGA: NVIDIA Corporation GeForce RTX 4090"
+            returncode=0, stdout="01:00.0 VGA: NVIDIA Corporation GeForce RTX 4090"
         )
 
         result = detector._has_nvidia_gpu()
 
         assert result is True
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_has_nvidia_gpu_false(self, mock_run, detector):
         """Test NVIDIA GPU detection when absent."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="00:02.0 VGA: Intel Corporation UHD Graphics"
+            returncode=0, stdout="00:02.0 VGA: Intel Corporation UHD Graphics"
         )
 
         result = detector._has_nvidia_gpu()
 
         assert result is False
 
-    @patch('os.statvfs')
+    @patch("os.statvfs")
     def test_get_disk_free_gb(self, mock_statvfs, detector):
         """Test disk free space detection."""
-        mock_statvfs.return_value = MagicMock(
-            f_frsize=4096,
-            f_bavail=262144000  # ~1TB free
-        )
+        mock_statvfs.return_value = MagicMock(f_frsize=4096, f_bavail=262144000)  # ~1TB free
 
         free_gb = detector._get_disk_free_gb()
 
         assert free_gb > 0
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_detect_quick(self, mock_run, detector):
         """Test quick detection returns dict."""
         mock_run.return_value = MagicMock(returncode=0, stdout="")
 
-        with patch.object(detector, '_get_cpu_cores', return_value=8):
-            with patch.object(detector, '_get_ram_gb', return_value=32.0):
-                with patch.object(detector, '_has_nvidia_gpu', return_value=True):
-                    with patch.object(detector, '_get_disk_free_gb', return_value=500.0):
+        with patch.object(detector, "_get_cpu_cores", return_value=8):
+            with patch.object(detector, "_get_ram_gb", return_value=32.0):
+                with patch.object(detector, "_has_nvidia_gpu", return_value=True):
+                    with patch.object(detector, "_get_disk_free_gb", return_value=500.0):
                         quick = detector.detect_quick()
 
         assert quick["cpu_cores"] == 8
@@ -334,17 +317,14 @@ class TestDetectionMethods:
     def detector(self):
         return HardwareDetector(use_cache=False)
 
-    @patch('os.uname')
+    @patch("os.uname")
     def test_detect_system(self, mock_uname, detector):
         """Test system info detection."""
-        mock_uname.return_value = MagicMock(
-            nodename="testhost",
-            release="5.15.0-generic"
-        )
+        mock_uname.return_value = MagicMock(nodename="testhost", release="5.15.0-generic")
 
         info = SystemInfo()
 
-        with patch('builtins.open', mock_open(read_data='NAME="Ubuntu"\nVERSION_ID="24.04"')):
+        with patch("builtins.open", mock_open(read_data='NAME="Ubuntu"\nVERSION_ID="24.04"')):
             detector._detect_system(info)
 
         assert info.hostname == "testhost"
@@ -361,18 +341,18 @@ flags       : avx avx2 sse4_1 sse4_2 aes
 """
         info = SystemInfo()
 
-        with patch('builtins.open', mock_open(read_data=cpuinfo)):
+        with patch("builtins.open", mock_open(read_data=cpuinfo)):
             detector._detect_cpu(info)
 
         assert info.cpu.vendor == CPUVendor.INTEL
         assert "i7-9700K" in info.cpu.model
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_detect_gpu_nvidia(self, mock_run, detector):
         """Test NVIDIA GPU detection."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout="01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GeForce RTX 4090 [10de:2684]"
+            stdout="01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GeForce RTX 4090 [10de:2684]",
         )
 
         info = SystemInfo()
@@ -382,12 +362,11 @@ flags       : avx avx2 sse4_1 sse4_2 aes
         assert len(info.gpu) >= 1
         assert info.gpu[0].vendor == GPUVendor.NVIDIA
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_detect_gpu_amd(self, mock_run, detector):
         """Test AMD GPU detection."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="01:00.0 VGA compatible controller: AMD/ATI Radeon RX 7900 XTX"
+            returncode=0, stdout="01:00.0 VGA compatible controller: AMD/ATI Radeon RX 7900 XTX"
         )
 
         info = SystemInfo()
@@ -405,19 +384,19 @@ SwapFree:        8192000 kB
 """
         info = SystemInfo()
 
-        with patch('builtins.open', mock_open(read_data=meminfo)):
+        with patch("builtins.open", mock_open(read_data=meminfo)):
             detector._detect_memory(info)
 
         assert info.memory.total_mb == 32000
         assert info.memory.available_mb == 16000
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_detect_storage(self, mock_run, detector):
         """Test storage detection."""
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout="""Filesystem     1M-blocks  Used Available Use% Mounted on
-/dev/sda1       500000M  250000M  250000M  50% /"""
+/dev/sda1       500000M  250000M  250000M  50% /""",
         )
 
         info = SystemInfo()
@@ -426,14 +405,14 @@ SwapFree:        8192000 kB
         # Storage detection depends on parsing
         assert isinstance(info.storage, list)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_detect_virtualization_docker(self, mock_run, detector):
         """Test Docker detection."""
         mock_run.side_effect = Exception("Command not found")
 
         info = SystemInfo()
 
-        with patch.object(Path, 'exists', return_value=True):
+        with patch.object(Path, "exists", return_value=True):
             detector._detect_virtualization(info)
 
         assert info.virtualization == "docker"
@@ -450,10 +429,7 @@ class TestCaching:
 
     def test_save_and_load_cache(self, detector):
         """Test cache save and load."""
-        info = SystemInfo(
-            hostname="testhost",
-            distro="Ubuntu"
-        )
+        info = SystemInfo(hostname="testhost", distro="Ubuntu")
         info.cpu = CPUInfo(vendor=CPUVendor.INTEL, model="i7")
         info.memory = MemoryInfo(total_mb=32000)
         info.has_nvidia_gpu = True
@@ -490,7 +466,7 @@ class TestGlobalFunctions:
 
         assert d1 is d2
 
-    @patch.object(HardwareDetector, 'detect')
+    @patch.object(HardwareDetector, "detect")
     def test_detect_hardware(self, mock_detect):
         """Test detect_hardware function."""
         mock_detect.return_value = SystemInfo()
@@ -499,7 +475,7 @@ class TestGlobalFunctions:
 
         assert isinstance(result, SystemInfo)
 
-    @patch.object(HardwareDetector, 'detect_quick')
+    @patch.object(HardwareDetector, "detect_quick")
     def test_detect_quick(self, mock_quick):
         """Test detect_quick function."""
         mock_quick.return_value = {"cpu_cores": 8}
@@ -508,7 +484,7 @@ class TestGlobalFunctions:
 
         assert result["cpu_cores"] == 8
 
-    @patch.object(HardwareDetector, 'detect')
+    @patch.object(HardwareDetector, "detect")
     def test_get_gpu_info(self, mock_detect):
         """Test get_gpu_info function."""
         info = SystemInfo()
@@ -519,7 +495,7 @@ class TestGlobalFunctions:
 
         assert len(result) == 1
 
-    @patch.object(HardwareDetector, 'detect_quick')
+    @patch.object(HardwareDetector, "detect_quick")
     def test_has_nvidia_gpu(self, mock_quick):
         """Test has_nvidia_gpu function."""
         mock_quick.return_value = {"has_nvidia": True}
@@ -528,7 +504,7 @@ class TestGlobalFunctions:
 
         assert result is True
 
-    @patch.object(HardwareDetector, 'detect_quick')
+    @patch.object(HardwareDetector, "detect_quick")
     def test_get_ram_gb(self, mock_quick):
         """Test get_ram_gb function."""
         mock_quick.return_value = {"ram_gb": 32.0}
@@ -537,7 +513,7 @@ class TestGlobalFunctions:
 
         assert result == 32.0
 
-    @patch.object(HardwareDetector, 'detect_quick')
+    @patch.object(HardwareDetector, "detect_quick")
     def test_get_cpu_cores(self, mock_quick):
         """Test get_cpu_cores function."""
         mock_quick.return_value = {"cpu_cores": 8}
@@ -554,7 +530,7 @@ class TestEdgeCases:
     def detector(self):
         return HardwareDetector(use_cache=False)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_lspci_timeout(self, mock_run, detector):
         """Test handling lspci timeout."""
         mock_run.side_effect = subprocess.TimeoutExpired("lspci", 5)
@@ -565,13 +541,13 @@ class TestEdgeCases:
         # Should not crash, just have empty GPU list
         assert info.gpu == []
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_nvidia_smi_not_found(self, mock_run, detector):
         """Test handling missing nvidia-smi."""
         # First call for lspci succeeds
         mock_run.side_effect = [
             MagicMock(returncode=0, stdout="NVIDIA GPU"),
-            FileNotFoundError()  # nvidia-smi not found
+            FileNotFoundError(),  # nvidia-smi not found
         ]
 
         info = SystemInfo()
@@ -583,7 +559,7 @@ class TestEdgeCases:
 
     def test_detect_with_missing_proc_files(self, detector):
         """Test detection when /proc files are missing."""
-        with patch('builtins.open', side_effect=FileNotFoundError):
+        with patch("builtins.open", side_effect=FileNotFoundError):
             info = SystemInfo()
             detector._detect_cpu(info)
             detector._detect_memory(info)
@@ -602,7 +578,7 @@ class TestIntegration:
         detector.CACHE_FILE = tmp_path / "cache.json"
 
         # First detection (populates cache)
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="")
             info1 = detector.detect()
 

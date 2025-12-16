@@ -17,10 +17,12 @@ from pathlib import Path
 CORTEX_DB = Path.home() / ".cortex/kv_cache.db"
 SHM_PREFIX = "cortex_kv_"
 
+
 class CachePolicy(Enum):
     LRU = "lru"
     LFU = "lfu"
     FIFO = "fifo"
+
 
 @dataclass
 class CacheConfig:
@@ -28,6 +30,7 @@ class CacheConfig:
     size_bytes: int
     policy: str = "lru"
     max_sequences: int = 1000
+
 
 @dataclass
 class CacheEntry:
@@ -44,26 +47,36 @@ class CacheDatabase:
     def __init__(self):
         CORTEX_DB.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(CORTEX_DB) as conn:
-            conn.executescript("""
+            conn.executescript(
+                """
                 CREATE TABLE IF NOT EXISTS pools (name TEXT PRIMARY KEY, config TEXT, shm_name TEXT);
                 CREATE TABLE IF NOT EXISTS entries (seq_id INTEGER, pool TEXT, created REAL, accessed REAL,
                     count INTEGER, tokens INTEGER, size INTEGER, offset INTEGER, PRIMARY KEY(seq_id, pool));
                 CREATE TABLE IF NOT EXISTS stats (pool TEXT PRIMARY KEY, hits INTEGER DEFAULT 0, misses INTEGER DEFAULT 0);
-            """)
+            """
+            )
 
     def save_pool(self, cfg: CacheConfig, shm: str):
         with sqlite3.connect(CORTEX_DB) as conn:
-            conn.execute("INSERT OR REPLACE INTO pools VALUES (?,?,?)", (cfg.name, json.dumps(asdict(cfg)), shm))
+            conn.execute(
+                "INSERT OR REPLACE INTO pools VALUES (?,?,?)",
+                (cfg.name, json.dumps(asdict(cfg)), shm),
+            )
             conn.execute("INSERT OR IGNORE INTO stats (pool) VALUES (?)", (cfg.name,))
 
     def get_pool(self, name: str):
         with sqlite3.connect(CORTEX_DB) as conn:
-            row = conn.execute("SELECT config, shm_name FROM pools WHERE name=?", (name,)).fetchone()
+            row = conn.execute(
+                "SELECT config, shm_name FROM pools WHERE name=?", (name,)
+            ).fetchone()
             return (CacheConfig(**json.loads(row[0])), row[1]) if row else None
 
     def list_pools(self):
         with sqlite3.connect(CORTEX_DB) as conn:
-            return [CacheConfig(**json.loads(r[0])) for r in conn.execute("SELECT config FROM pools").fetchall()]
+            return [
+                CacheConfig(**json.loads(r[0]))
+                for r in conn.execute("SELECT config FROM pools").fetchall()
+            ]
 
 
 class SharedMemoryPool:
@@ -123,6 +136,7 @@ class KVCacheManager:
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Cortex KV-Cache Manager")
     sub = parser.add_subparsers(dest="cmd")
 
@@ -146,7 +160,7 @@ def main():
     elif args.cmd == "destroy":
         mgr.destroy_pool(args.name)
     elif args.cmd in ("status", "list"):
-        mgr.status(getattr(args, 'name', None))
+        mgr.status(getattr(args, "name", None))
 
 
 if __name__ == "__main__":

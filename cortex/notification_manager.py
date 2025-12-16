@@ -9,6 +9,7 @@ from rich.console import Console
 # Initialize console for pretty logging
 console = Console()
 
+
 class NotificationManager:
     """
     Manages desktop notifications for Cortex OS.
@@ -28,11 +29,7 @@ class NotificationManager:
         self.config_file = self.config_dir / "notification_config.json"
 
         # Default configuration
-        self.config = {
-            "dnd_start": "22:00",
-            "dnd_end": "08:00",
-            "enabled": True
-        }
+        self.config = {"dnd_start": "22:00", "dnd_end": "08:00", "enabled": True}
 
         self._load_config()
         self.history = self._load_history()
@@ -50,7 +47,7 @@ class NotificationManager:
 
     def _save_config(self):
         """Saves current configuration to JSON."""
-        with open(self.config_file, 'w') as f:
+        with open(self.config_file, "w") as f:
             json.dump(self.config, f, indent=4)
 
     def _load_history(self) -> list[dict]:
@@ -65,7 +62,7 @@ class NotificationManager:
 
     def _save_history(self):
         """Saves the last 100 notifications to history."""
-        with open(self.history_file, 'w') as f:
+        with open(self.history_file, "w") as f:
             json.dump(self.history[-100:], f, indent=4)
 
     def _get_current_time(self):
@@ -92,7 +89,9 @@ class NotificationManager:
         else:
             return now >= start_time or now <= end_time
 
-    def send(self, title: str, message: str, level: str = "normal", actions: list[str] | None = None):
+    def send(
+        self, title: str, message: str, level: str = "normal", actions: list[str] | None = None
+    ):
         """
         Sends a notification.
         :param level: 'low', 'normal', 'critical'. Critical bypasses DND.
@@ -125,11 +124,15 @@ class NotificationManager:
         action_text = f" [bold cyan][Actions: {', '.join(actions)}][/bold cyan]" if actions else ""
 
         if success:
-            console.print(f"[bold green]🔔 Notification Sent:[/bold green] {title} - {message}{action_text}")
+            console.print(
+                f"[bold green]🔔 Notification Sent:[/bold green] {title} - {message}{action_text}"
+            )
             self._log_history(title, message, level, status="sent", actions=actions)
         else:
             # Fallback for environments without GUI (like WSL default)
-            console.print(f"[bold yellow]🔔 [Simulation] Notification:[/bold yellow] {title} - {message}{action_text}")
+            console.print(
+                f"[bold yellow]🔔 [Simulation] Notification:[/bold yellow] {title} - {message}{action_text}"
+            )
             self._log_history(title, message, level, status="simulated", actions=actions)
 
     def _log_history(self, title, message, level, status, actions=None):
@@ -140,10 +143,11 @@ class NotificationManager:
             "message": message,
             "level": level,
             "status": status,
-            "actions": actions if actions else []
+            "actions": actions if actions else [],
         }
         self.history.append(entry)
         self._save_history()
+
 
 if __name__ == "__main__":
     mgr = NotificationManager()

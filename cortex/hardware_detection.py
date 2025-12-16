@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class GPUVendor(Enum):
     """GPU vendors."""
+
     NVIDIA = "nvidia"
     AMD = "amd"
     INTEL = "intel"
@@ -32,6 +33,7 @@ class GPUVendor(Enum):
 
 class CPUVendor(Enum):
     """CPU vendors."""
+
     INTEL = "intel"
     AMD = "amd"
     ARM = "arm"
@@ -41,6 +43,7 @@ class CPUVendor(Enum):
 @dataclass
 class CPUInfo:
     """CPU information."""
+
     vendor: CPUVendor = CPUVendor.UNKNOWN
     model: str = "Unknown"
     cores: int = 0
@@ -50,15 +53,13 @@ class CPUInfo:
     features: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            **asdict(self),
-            "vendor": self.vendor.value
-        }
+        return {**asdict(self), "vendor": self.vendor.value}
 
 
 @dataclass
 class GPUInfo:
     """GPU information."""
+
     vendor: GPUVendor = GPUVendor.UNKNOWN
     model: str = "Unknown"
     memory_mb: int = 0
@@ -68,15 +69,13 @@ class GPUInfo:
     pci_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            **asdict(self),
-            "vendor": self.vendor.value
-        }
+        return {**asdict(self), "vendor": self.vendor.value}
 
 
 @dataclass
 class MemoryInfo:
     """Memory information."""
+
     total_mb: int = 0
     available_mb: int = 0
     swap_total_mb: int = 0
@@ -91,16 +90,13 @@ class MemoryInfo:
         return round(self.available_mb / 1024, 1)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            **asdict(self),
-            "total_gb": self.total_gb,
-            "available_gb": self.available_gb
-        }
+        return {**asdict(self), "total_gb": self.total_gb, "available_gb": self.available_gb}
 
 
 @dataclass
 class StorageInfo:
     """Storage information."""
+
     device: str = ""
     mount_point: str = ""
     filesystem: str = ""
@@ -115,15 +111,13 @@ class StorageInfo:
         return 0.0
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            **asdict(self),
-            "usage_percent": self.usage_percent
-        }
+        return {**asdict(self), "usage_percent": self.usage_percent}
 
 
 @dataclass
 class NetworkInfo:
     """Network interface information."""
+
     interface: str = ""
     ip_address: str = ""
     mac_address: str = ""
@@ -137,6 +131,7 @@ class NetworkInfo:
 @dataclass
 class SystemInfo:
     """Complete system information."""
+
     hostname: str = ""
     kernel_version: str = ""
     distro: str = ""
@@ -252,6 +247,7 @@ class HardwareDetector:
             # Check age
             age = Path.ctime(self.CACHE_FILE)
             import time
+
             if time.time() - self.CACHE_FILE.stat().st_mtime > self.CACHE_MAX_AGE_SECONDS:
                 return None
 
@@ -295,7 +291,7 @@ class HardwareDetector:
         """Save hardware info to cache."""
         try:
             self.CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.CACHE_FILE, 'w') as f:
+            with open(self.CACHE_FILE, "w") as f:
                 json.dump(info.to_dict(), f, indent=2)
         except Exception as e:
             logger.debug(f"Cache save failed: {e}")
@@ -384,12 +380,7 @@ class HardwareDetector:
         """Detect GPU information."""
         # Try lspci for basic detection
         try:
-            result = subprocess.run(
-                ["lspci", "-nn"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
+            result = subprocess.run(["lspci", "-nn"], capture_output=True, text=True, timeout=5)
 
             for line in result.stdout.split("\n"):
                 if "VGA" in line or "3D" in line or "Display" in line:
@@ -444,11 +435,14 @@ class HardwareDetector:
         """Detect NVIDIA-specific GPU details."""
         try:
             result = subprocess.run(
-                ["nvidia-smi", "--query-gpu=name,memory.total,driver_version,compute_cap",
-                 "--format=csv,noheader,nounits"],
+                [
+                    "nvidia-smi",
+                    "--query-gpu=name,memory.total,driver_version,compute_cap",
+                    "--format=csv,noheader,nounits",
+                ],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
 
             if result.returncode == 0:
@@ -473,10 +467,7 @@ class HardwareDetector:
         try:
             # Check for ROCm
             result = subprocess.run(
-                ["rocm-smi", "--showid"],
-                capture_output=True,
-                text=True,
-                timeout=5
+                ["rocm-smi", "--showid"], capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
                 info.rocm_available = True
@@ -508,7 +499,7 @@ class HardwareDetector:
                 ["df", "-BM", "--output=source,target,fstype,size,used,avail"],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
 
             for line in result.stdout.strip().split("\n")[1:]:
@@ -556,7 +547,7 @@ class HardwareDetector:
                         ["ip", "-4", "addr", "show", iface_dir.name],
                         capture_output=True,
                         text=True,
-                        timeout=2
+                        timeout=2,
                     )
                     match = re.search(r"inet\s+([\d.]+)", result.stdout)
                     if match:
@@ -581,10 +572,7 @@ class HardwareDetector:
         """Detect if running in virtualized environment."""
         try:
             result = subprocess.run(
-                ["systemd-detect-virt"],
-                capture_output=True,
-                text=True,
-                timeout=2
+                ["systemd-detect-virt"], capture_output=True, text=True, timeout=2
             )
             virt = result.stdout.strip()
             if virt and virt != "none":
@@ -616,12 +604,7 @@ class HardwareDetector:
     def _has_nvidia_gpu(self) -> bool:
         """Quick NVIDIA GPU check."""
         try:
-            result = subprocess.run(
-                ["lspci"],
-                capture_output=True,
-                text=True,
-                timeout=2
-            )
+            result = subprocess.run(["lspci"], capture_output=True, text=True, timeout=2)
             return "NVIDIA" in result.stdout.upper()
         except:
             return False
@@ -729,7 +712,9 @@ if __name__ == "__main__":
 
     print("\n💿 Storage:")
     for disk in info.storage[:3]:
-        print(f"  {disk.mount_point}: {disk.available_gb:.1f} GB free / {disk.total_gb:.1f} GB ({disk.usage_percent}% used)")
+        print(
+            f"  {disk.mount_point}: {disk.available_gb:.1f} GB free / {disk.total_gb:.1f} GB ({disk.usage_percent}% used)"
+        )
 
     print("\n🌐 Network:")
     for net in info.network:

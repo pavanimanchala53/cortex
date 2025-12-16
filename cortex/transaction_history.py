@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class TransactionType(Enum):
     """Types of package transactions."""
+
     INSTALL = "install"
     REMOVE = "remove"
     UPGRADE = "upgrade"
@@ -36,6 +37,7 @@ class TransactionType(Enum):
 
 class TransactionStatus(Enum):
     """Status of a transaction."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -47,6 +49,7 @@ class TransactionStatus(Enum):
 @dataclass
 class PackageState:
     """Represents the state of a package at a point in time."""
+
     name: str
     version: str | None = None
     installed: bool = False
@@ -64,6 +67,7 @@ class PackageState:
 @dataclass
 class Transaction:
     """Represents a single package transaction."""
+
     id: str
     transaction_type: TransactionType
     packages: list[str]
@@ -111,8 +115,12 @@ class Transaction:
             packages=data["packages"],
             timestamp=datetime.fromisoformat(data["timestamp"]),
             status=TransactionStatus(data["status"]),
-            before_state={k: PackageState.from_dict(v) for k, v in data.get("before_state", {}).items()},
-            after_state={k: PackageState.from_dict(v) for k, v in data.get("after_state", {}).items()},
+            before_state={
+                k: PackageState.from_dict(v) for k, v in data.get("before_state", {}).items()
+            },
+            after_state={
+                k: PackageState.from_dict(v) for k, v in data.get("after_state", {}).items()
+            },
             command=data.get("command", ""),
             user=data.get("user", ""),
             duration_seconds=data.get("duration_seconds", 0.0),
@@ -142,7 +150,8 @@ class TransactionHistory:
     def _init_db(self):
         """Initialize the database schema."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS transactions (
                     id TEXT PRIMARY KEY,
                     transaction_type TEXT NOT NULL,
@@ -159,17 +168,22 @@ class TransactionHistory:
                     is_rollback_safe INTEGER,
                     rollback_warning TEXT
                 )
-            """)
+            """
+            )
 
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_timestamp
                 ON transactions(timestamp DESC)
-            """)
+            """
+            )
 
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_status
                 ON transactions(status)
-            """)
+            """
+            )
 
             conn.commit()
 
@@ -180,10 +194,7 @@ class TransactionHistory:
         return f"tx_{timestamp}_{random_part}"
 
     def begin_transaction(
-        self,
-        transaction_type: TransactionType,
-        packages: list[str],
-        command: str = ""
+        self, transaction_type: TransactionType, packages: list[str], command: str = ""
     ) -> Transaction:
         """
         Begin a new transaction and capture before state.
@@ -222,10 +233,7 @@ class TransactionHistory:
         return transaction
 
     def complete_transaction(
-        self,
-        transaction: Transaction,
-        success: bool = True,
-        error_message: str | None = None
+        self, transaction: Transaction, success: bool = True, error_message: str | None = None
     ):
         """
         Complete a transaction and capture after state.
@@ -235,9 +243,7 @@ class TransactionHistory:
             success: Whether the operation succeeded
             error_message: Error message if failed
         """
-        transaction.duration_seconds = (
-            datetime.now() - transaction.timestamp
-        ).total_seconds()
+        transaction.duration_seconds = (datetime.now() - transaction.timestamp).total_seconds()
 
         if success:
             transaction.status = TransactionStatus.COMPLETED
@@ -264,7 +270,7 @@ class TransactionHistory:
             result = subprocess.run(
                 ["dpkg-query", "-W", "-f=${Status}|${Version}", package],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             if result.returncode == 0:
@@ -276,9 +282,7 @@ class TransactionHistory:
             # Get config files
             if state.installed:
                 config_result = subprocess.run(
-                    ["dpkg-query", "-L", package],
-                    capture_output=True,
-                    text=True
+                    ["dpkg-query", "-L", package], capture_output=True, text=True
                 )
                 if config_result.returncode == 0:
                     for line in config_result.stdout.strip().split("\n"):
@@ -287,9 +291,7 @@ class TransactionHistory:
 
             # Get dependencies
             dep_result = subprocess.run(
-                ["apt-cache", "depends", package, "--installed"],
-                capture_output=True,
-                text=True
+                ["apt-cache", "depends", package, "--installed"], capture_output=True, text=True
             )
             if dep_result.returncode == 0:
                 for line in dep_result.stdout.strip().split("\n"):
@@ -304,9 +306,7 @@ class TransactionHistory:
         return state
 
     def _calculate_rollback_commands(
-        self,
-        transaction_type: TransactionType,
-        before_state: dict[str, PackageState]
+        self, transaction_type: TransactionType, before_state: dict[str, PackageState]
     ) -> list[str]:
         """Calculate commands needed to rollback this transaction."""
         commands = []
@@ -339,16 +339,22 @@ class TransactionHistory:
         """Assess whether a transaction can be safely rolled back."""
         # Check for system-critical packages
         critical_packages = {
-            "apt", "dpkg", "libc6", "systemd", "bash", "coreutils",
-            "linux-image", "grub", "init"
+            "apt",
+            "dpkg",
+            "libc6",
+            "systemd",
+            "bash",
+            "coreutils",
+            "linux-image",
+            "grub",
+            "init",
         }
 
         for pkg in transaction.packages:
             if any(crit in pkg for crit in critical_packages):
                 transaction.is_rollback_safe = False
                 transaction.rollback_warning = (
-                    f"Rolling back {pkg} may affect system stability. "
-                    "Proceed with caution."
+                    f"Rolling back {pkg} may affect system stability. " "Proceed with caution."
                 )
                 break
 
@@ -361,36 +367,36 @@ class TransactionHistory:
     def _save_transaction(self, transaction: Transaction):
         """Save transaction to database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO transactions VALUES (
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                 )
-            """, (
-                transaction.id,
-                transaction.transaction_type.value,
-                json.dumps(transaction.packages),
-                transaction.timestamp.isoformat(),
-                transaction.status.value,
-                json.dumps({k: v.to_dict() for k, v in transaction.before_state.items()}),
-                json.dumps({k: v.to_dict() for k, v in transaction.after_state.items()}),
-                transaction.command,
-                transaction.user,
-                transaction.duration_seconds,
-                transaction.error_message,
-                json.dumps(transaction.rollback_commands),
-                1 if transaction.is_rollback_safe else 0,
-                transaction.rollback_warning,
-            ))
+            """,
+                (
+                    transaction.id,
+                    transaction.transaction_type.value,
+                    json.dumps(transaction.packages),
+                    transaction.timestamp.isoformat(),
+                    transaction.status.value,
+                    json.dumps({k: v.to_dict() for k, v in transaction.before_state.items()}),
+                    json.dumps({k: v.to_dict() for k, v in transaction.after_state.items()}),
+                    transaction.command,
+                    transaction.user,
+                    transaction.duration_seconds,
+                    transaction.error_message,
+                    json.dumps(transaction.rollback_commands),
+                    1 if transaction.is_rollback_safe else 0,
+                    transaction.rollback_warning,
+                ),
+            )
             conn.commit()
 
     def get_transaction(self, transaction_id: str) -> Transaction | None:
         """Get a specific transaction by ID."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                "SELECT * FROM transactions WHERE id = ?",
-                (transaction_id,)
-            )
+            cursor = conn.execute("SELECT * FROM transactions WHERE id = ?", (transaction_id,))
             row = cursor.fetchone()
 
             if row:
@@ -399,9 +405,7 @@ class TransactionHistory:
         return None
 
     def get_recent(
-        self,
-        limit: int = 10,
-        status_filter: TransactionStatus | None = None
+        self, limit: int = 10, status_filter: TransactionStatus | None = None
     ) -> list[Transaction]:
         """Get recent transactions."""
         with sqlite3.connect(self.db_path) as conn:
@@ -410,12 +414,11 @@ class TransactionHistory:
             if status_filter:
                 cursor = conn.execute(
                     "SELECT * FROM transactions WHERE status = ? ORDER BY timestamp DESC LIMIT ?",
-                    (status_filter.value, limit)
+                    (status_filter.value, limit),
                 )
             else:
                 cursor = conn.execute(
-                    "SELECT * FROM transactions ORDER BY timestamp DESC LIMIT ?",
-                    (limit,)
+                    "SELECT * FROM transactions ORDER BY timestamp DESC LIMIT ?", (limit,)
                 )
 
             return [self._row_to_transaction(row) for row in cursor]
@@ -426,7 +429,7 @@ class TransactionHistory:
         transaction_type: TransactionType | None = None,
         since: datetime | None = None,
         until: datetime | None = None,
-        limit: int = 50
+        limit: int = 50,
     ) -> list[Transaction]:
         """Search transactions with filters."""
         query = "SELECT * FROM transactions WHERE 1=1"
@@ -484,23 +487,19 @@ class TransactionHistory:
     def get_stats(self) -> dict[str, Any]:
         """Get transaction statistics."""
         with sqlite3.connect(self.db_path) as conn:
-            total = conn.execute(
-                "SELECT COUNT(*) FROM transactions"
-            ).fetchone()[0]
+            total = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
 
             by_type = {}
             for t in TransactionType:
                 count = conn.execute(
-                    "SELECT COUNT(*) FROM transactions WHERE transaction_type = ?",
-                    (t.value,)
+                    "SELECT COUNT(*) FROM transactions WHERE transaction_type = ?", (t.value,)
                 ).fetchone()[0]
                 by_type[t.value] = count
 
             by_status = {}
             for s in TransactionStatus:
                 count = conn.execute(
-                    "SELECT COUNT(*) FROM transactions WHERE status = ?",
-                    (s.value,)
+                    "SELECT COUNT(*) FROM transactions WHERE status = ?", (s.value,)
                 ).fetchone()[0]
                 by_status[s.value] = count
 
@@ -571,14 +570,11 @@ class UndoManager:
                     "after": transaction.after_state.get(pkg, PackageState(pkg)).to_dict(),
                 }
                 for pkg in transaction.packages
-            }
+            },
         }
 
     def undo(
-        self,
-        transaction_id: str,
-        dry_run: bool = False,
-        force: bool = False
+        self, transaction_id: str, dry_run: bool = False, force: bool = False
     ) -> dict[str, Any]:
         """
         Undo a transaction.
@@ -605,7 +601,7 @@ class UndoManager:
             return {
                 "success": False,
                 "error": "Unsafe rollback - use force=True to override",
-                "warning": transaction.rollback_warning
+                "warning": transaction.rollback_warning,
             }
 
         result = {
@@ -626,12 +622,7 @@ class UndoManager:
                 continue  # Skip comments
 
             try:
-                proc = subprocess.run(
-                    cmd,
-                    shell=True,
-                    capture_output=True,
-                    text=True
-                )
+                proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)
                 if proc.returncode != 0:
                     errors.append(f"{cmd}: {proc.stderr}")
             except Exception as e:
@@ -653,10 +644,7 @@ class UndoManager:
 
     def undo_last(self, dry_run: bool = False) -> dict[str, Any]:
         """Undo the most recent successful transaction."""
-        recent = self.history.get_recent(
-            limit=1,
-            status_filter=TransactionStatus.COMPLETED
-        )
+        recent = self.history.get_recent(limit=1, status_filter=TransactionStatus.COMPLETED)
 
         if not recent:
             return {"success": False, "error": "No completed transactions to undo"}
@@ -688,21 +676,13 @@ def get_undo_manager() -> UndoManager:
 def record_install(packages: list[str], command: str = "") -> Transaction:
     """Record an install operation."""
     history = get_history()
-    return history.begin_transaction(
-        TransactionType.INSTALL,
-        packages,
-        command
-    )
+    return history.begin_transaction(TransactionType.INSTALL, packages, command)
 
 
 def record_remove(packages: list[str], command: str = "") -> Transaction:
     """Record a remove operation."""
     history = get_history()
-    return history.begin_transaction(
-        TransactionType.REMOVE,
-        packages,
-        command
-    )
+    return history.begin_transaction(TransactionType.REMOVE, packages, command)
 
 
 def show_history(limit: int = 10) -> list[dict[str, Any]]:
@@ -729,9 +709,7 @@ if __name__ == "__main__":
     # Simulate an install transaction
     print("\n1. Recording install transaction...")
     tx = history.begin_transaction(
-        TransactionType.INSTALL,
-        ["nginx", "redis"],
-        "cortex install nginx redis"
+        TransactionType.INSTALL, ["nginx", "redis"], "cortex install nginx redis"
     )
     print(f"   Transaction ID: {tx.id}")
     print(f"   Packages: {tx.packages}")
@@ -744,7 +722,9 @@ if __name__ == "__main__":
     # Show history
     print("\n2. Transaction History:")
     for t in history.get_recent(5):
-        print(f"   {t.timestamp.strftime('%Y-%m-%d %H:%M')} | {t.transaction_type.value:10} | {', '.join(t.packages)}")
+        print(
+            f"   {t.timestamp.strftime('%Y-%m-%d %H:%M')} | {t.transaction_type.value:10} | {', '.join(t.packages)}"
+        )
 
     # Preview undo
     print("\n3. Preview Undo:")

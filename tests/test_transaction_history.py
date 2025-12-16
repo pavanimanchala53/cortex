@@ -45,7 +45,7 @@ class TestPackageState:
             version="1.24.0",
             installed=True,
             config_files=["/etc/nginx/nginx.conf"],
-            dependencies=["libc6"]
+            dependencies=["libc6"],
         )
 
         data = state.to_dict()
@@ -62,7 +62,7 @@ class TestPackageState:
             "version": "7.0.0",
             "installed": True,
             "config_files": ["/etc/redis/redis.conf"],
-            "dependencies": ["libc6", "libssl3"]
+            "dependencies": ["libc6", "libssl3"],
         }
 
         state = PackageState.from_dict(data)
@@ -81,7 +81,7 @@ class TestTransaction:
             id="tx_001",
             transaction_type=TransactionType.INSTALL,
             packages=["nginx"],
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         assert tx.id == "tx_001"
@@ -99,7 +99,7 @@ class TestTransaction:
             status=TransactionStatus.COMPLETED,
             command="cortex install nginx redis",
             user="testuser",
-            duration_seconds=5.5
+            duration_seconds=5.5,
         )
 
         data = tx.to_dict()
@@ -125,7 +125,7 @@ class TestTransaction:
             "error_message": None,
             "rollback_commands": ["sudo apt install -y vim"],
             "is_rollback_safe": True,
-            "rollback_warning": None
+            "rollback_warning": None,
         }
 
         tx = Transaction.from_dict(data)
@@ -156,64 +156,48 @@ class TestTransactionHistory:
         assert id1.startswith("tx_")
         assert id1 != id2
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_begin_transaction(self, mock_run, history):
         """Test beginning a transaction."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
 
-        tx = history.begin_transaction(
-            TransactionType.INSTALL,
-            ["nginx"],
-            "cortex install nginx"
-        )
+        tx = history.begin_transaction(TransactionType.INSTALL, ["nginx"], "cortex install nginx")
 
         assert tx.id.startswith("tx_")
         assert tx.transaction_type == TransactionType.INSTALL
         assert tx.packages == ["nginx"]
         assert tx.status == TransactionStatus.IN_PROGRESS
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_complete_transaction_success(self, mock_run, history):
         """Test completing a transaction successfully."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
 
-        tx = history.begin_transaction(
-            TransactionType.INSTALL,
-            ["nginx"],
-            ""
-        )
+        tx = history.begin_transaction(TransactionType.INSTALL, ["nginx"], "")
 
         history.complete_transaction(tx, success=True)
 
         assert tx.status == TransactionStatus.COMPLETED
         assert tx.duration_seconds > 0
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_complete_transaction_failure(self, mock_run, history):
         """Test completing a failed transaction."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
 
-        tx = history.begin_transaction(
-            TransactionType.INSTALL,
-            ["nginx"],
-            ""
-        )
+        tx = history.begin_transaction(TransactionType.INSTALL, ["nginx"], "")
 
         history.complete_transaction(tx, success=False, error_message="Download failed")
 
         assert tx.status == TransactionStatus.FAILED
         assert tx.error_message == "Download failed"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_transaction(self, mock_run, history):
         """Test retrieving a transaction by ID."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
 
-        tx = history.begin_transaction(
-            TransactionType.INSTALL,
-            ["nginx"],
-            ""
-        )
+        tx = history.begin_transaction(TransactionType.INSTALL, ["nginx"], "")
 
         retrieved = history.get_transaction(tx.id)
 
@@ -226,18 +210,14 @@ class TestTransactionHistory:
         result = history.get_transaction("nonexistent_id")
         assert result is None
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_recent(self, mock_run, history):
         """Test getting recent transactions."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
 
         # Create multiple transactions
         for pkg in ["nginx", "redis", "postgresql"]:
-            tx = history.begin_transaction(
-                TransactionType.INSTALL,
-                [pkg],
-                ""
-            )
+            tx = history.begin_transaction(TransactionType.INSTALL, [pkg], "")
             history.complete_transaction(tx, success=True)
 
         recent = history.get_recent(limit=2)
@@ -246,7 +226,7 @@ class TestTransactionHistory:
         # Most recent should be first
         assert "postgresql" in recent[0].packages
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_recent_with_filter(self, mock_run, history):
         """Test getting recent with status filter."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
@@ -263,7 +243,7 @@ class TestTransactionHistory:
         assert all(t.status == TransactionStatus.COMPLETED for t in completed)
         assert all(t.status == TransactionStatus.FAILED for t in failed)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_search_by_package(self, mock_run, history):
         """Test searching by package name."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
@@ -279,7 +259,7 @@ class TestTransactionHistory:
         assert len(results) >= 1
         assert all("nginx" in t.packages for t in results)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_search_by_type(self, mock_run, history):
         """Test searching by transaction type."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
@@ -296,7 +276,7 @@ class TestTransactionHistory:
         assert all(t.transaction_type == TransactionType.INSTALL for t in installs)
         assert all(t.transaction_type == TransactionType.REMOVE for t in removes)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_stats(self, mock_run, history):
         """Test getting statistics."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
@@ -313,28 +293,18 @@ class TestTransactionHistory:
 
     def test_calculate_rollback_install(self, history):
         """Test rollback commands for install."""
-        before_state = {
-            "nginx": PackageState(name="nginx", installed=False)
-        }
+        before_state = {"nginx": PackageState(name="nginx", installed=False)}
 
-        commands = history._calculate_rollback_commands(
-            TransactionType.INSTALL,
-            before_state
-        )
+        commands = history._calculate_rollback_commands(TransactionType.INSTALL, before_state)
 
         assert any("remove" in cmd for cmd in commands)
         assert any("nginx" in cmd for cmd in commands)
 
     def test_calculate_rollback_remove(self, history):
         """Test rollback commands for remove."""
-        before_state = {
-            "nginx": PackageState(name="nginx", version="1.24.0", installed=True)
-        }
+        before_state = {"nginx": PackageState(name="nginx", version="1.24.0", installed=True)}
 
-        commands = history._calculate_rollback_commands(
-            TransactionType.REMOVE,
-            before_state
-        )
+        commands = history._calculate_rollback_commands(TransactionType.REMOVE, before_state)
 
         assert any("install" in cmd for cmd in commands)
         assert any("nginx" in cmd for cmd in commands)
@@ -349,16 +319,12 @@ class TestUndoManager:
         history = TransactionHistory(tmp_path / "test_history.db")
         return UndoManager(history)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_can_undo_completed(self, mock_run, manager):
         """Test can_undo for completed transaction."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
 
-        tx = manager.history.begin_transaction(
-            TransactionType.INSTALL,
-            ["nginx"],
-            ""
-        )
+        tx = manager.history.begin_transaction(TransactionType.INSTALL, ["nginx"], "")
         manager.history.complete_transaction(tx, success=True)
 
         can_undo, reason = manager.can_undo(tx.id)
@@ -374,32 +340,24 @@ class TestUndoManager:
         assert can_undo is False
         assert "not found" in reason.lower()
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_can_undo_failed(self, mock_run, manager):
         """Test can_undo for failed transaction."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
 
-        tx = manager.history.begin_transaction(
-            TransactionType.INSTALL,
-            ["nginx"],
-            ""
-        )
+        tx = manager.history.begin_transaction(TransactionType.INSTALL, ["nginx"], "")
         manager.history.complete_transaction(tx, success=False, error_message="Error")
 
         can_undo, reason = manager.can_undo(tx.id)
 
         assert can_undo is False
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_preview_undo(self, mock_run, manager):
         """Test previewing an undo operation."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
 
-        tx = manager.history.begin_transaction(
-            TransactionType.INSTALL,
-            ["nginx"],
-            ""
-        )
+        tx = manager.history.begin_transaction(TransactionType.INSTALL, ["nginx"], "")
         manager.history.complete_transaction(tx, success=True)
 
         preview = manager.preview_undo(tx.id)
@@ -414,16 +372,12 @@ class TestUndoManager:
 
         assert "error" in preview
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_undo_dry_run(self, mock_run, manager):
         """Test undo in dry run mode."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
 
-        tx = manager.history.begin_transaction(
-            TransactionType.INSTALL,
-            ["nginx"],
-            ""
-        )
+        tx = manager.history.begin_transaction(TransactionType.INSTALL, ["nginx"], "")
         # Manually add rollback commands
         tx.rollback_commands = ["sudo apt remove -y nginx"]
         manager.history.complete_transaction(tx, success=True)
@@ -433,7 +387,7 @@ class TestUndoManager:
         assert result["dry_run"] is True
         assert result["success"] is True
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_undo_not_found(self, mock_run, manager):
         """Test undo for non-existent transaction."""
         result = manager.undo("nonexistent")
@@ -441,16 +395,12 @@ class TestUndoManager:
         assert result["success"] is False
         assert "not found" in result["error"].lower()
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_undo_last(self, mock_run, manager):
         """Test undoing the last transaction."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
 
-        tx = manager.history.begin_transaction(
-            TransactionType.INSTALL,
-            ["nginx"],
-            ""
-        )
+        tx = manager.history.begin_transaction(TransactionType.INSTALL, ["nginx"], "")
         tx.rollback_commands = ["sudo apt remove -y nginx"]
         manager.history.complete_transaction(tx, success=True)
 
@@ -471,8 +421,14 @@ class TestTransactionTypes:
     def test_all_types_exist(self):
         """Test that all expected types exist."""
         expected = [
-            "INSTALL", "REMOVE", "UPGRADE", "DOWNGRADE",
-            "AUTOREMOVE", "PURGE", "CONFIGURE", "BATCH"
+            "INSTALL",
+            "REMOVE",
+            "UPGRADE",
+            "DOWNGRADE",
+            "AUTOREMOVE",
+            "PURGE",
+            "CONFIGURE",
+            "BATCH",
         ]
 
         actual = [t.name for t in TransactionType]
@@ -492,8 +448,12 @@ class TestTransactionStatus:
     def test_all_statuses_exist(self):
         """Test that all expected statuses exist."""
         expected = [
-            "PENDING", "IN_PROGRESS", "COMPLETED",
-            "FAILED", "ROLLED_BACK", "PARTIALLY_COMPLETED"
+            "PENDING",
+            "IN_PROGRESS",
+            "COMPLETED",
+            "FAILED",
+            "ROLLED_BACK",
+            "PARTIALLY_COMPLETED",
         ]
 
         actual = [s.name for s in TransactionStatus]
@@ -519,7 +479,7 @@ class TestGlobalFunctions:
 
         assert m1 is m2
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_record_install(self, mock_run):
         """Test record_install convenience function."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
@@ -529,7 +489,7 @@ class TestGlobalFunctions:
         assert tx is not None
         assert tx.transaction_type == TransactionType.INSTALL
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_record_remove(self, mock_run):
         """Test record_remove convenience function."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
@@ -561,40 +521,30 @@ class TestEdgeCases:
 
     def test_empty_packages_list(self, history):
         """Test transaction with empty packages list."""
-        tx = history.begin_transaction(
-            TransactionType.INSTALL,
-            [],
-            ""
-        )
+        tx = history.begin_transaction(TransactionType.INSTALL, [], "")
 
         assert tx.packages == []
         assert tx.before_state == {}
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_many_packages(self, mock_run, history):
         """Test transaction with many packages."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
 
         packages = [f"package_{i}" for i in range(100)]
-        tx = history.begin_transaction(
-            TransactionType.INSTALL,
-            packages,
-            ""
-        )
+        tx = history.begin_transaction(TransactionType.INSTALL, packages, "")
 
         assert len(tx.packages) == 100
 
     def test_special_characters_in_package(self, history):
         """Test package names with special characters."""
         tx = history.begin_transaction(
-            TransactionType.INSTALL,
-            ["lib32-gcc-libs", "python3.11-venv", "node@18"],
-            ""
+            TransactionType.INSTALL, ["lib32-gcc-libs", "python3.11-venv", "node@18"], ""
         )
 
         assert len(tx.packages) == 3
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_concurrent_transactions(self, mock_run, history):
         """Test handling concurrent transactions."""
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
@@ -623,18 +573,14 @@ class TestIntegration:
         manager = UndoManager(history)
         return history, manager
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_full_install_undo_workflow(self, mock_run, setup):
         """Test complete install and undo workflow."""
         history, manager = setup
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
         # Step 1: Install
-        tx = history.begin_transaction(
-            TransactionType.INSTALL,
-            ["nginx"],
-            "cortex install nginx"
-        )
+        tx = history.begin_transaction(TransactionType.INSTALL, ["nginx"], "cortex install nginx")
         tx.rollback_commands = ["sudo apt remove -y nginx"]
         history.complete_transaction(tx, success=True)
 
@@ -654,10 +600,10 @@ class TestIntegration:
         updated_tx = history.get_transaction(tx.id)
         assert updated_tx.status in [
             TransactionStatus.ROLLED_BACK,
-            TransactionStatus.PARTIALLY_COMPLETED
+            TransactionStatus.PARTIALLY_COMPLETED,
         ]
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_batch_operations(self, mock_run, setup):
         """Test batch operations."""
         history, manager = setup
@@ -665,11 +611,7 @@ class TestIntegration:
 
         packages = ["nginx", "redis", "postgresql", "mongodb"]
 
-        tx = history.begin_transaction(
-            TransactionType.BATCH,
-            packages,
-            "cortex install web-stack"
-        )
+        tx = history.begin_transaction(TransactionType.BATCH, packages, "cortex install web-stack")
 
         history.complete_transaction(tx, success=True)
 

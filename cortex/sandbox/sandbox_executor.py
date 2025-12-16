@@ -28,16 +28,24 @@ from typing import Any
 
 class CommandBlocked(Exception):
     """Raised when a command is blocked."""
+
     pass
 
 
 class ExecutionResult:
     """Result of command execution."""
 
-    def __init__(self, command: str, exit_code: int = 0, stdout: str = "",
-                 stderr: str = "", execution_time: float = 0.0,
-                 blocked: bool = False, violation: str | None = None,
-                 preview: str | None = None):
+    def __init__(
+        self,
+        command: str,
+        exit_code: int = 0,
+        stdout: str = "",
+        stderr: str = "",
+        execution_time: float = 0.0,
+        blocked: bool = False,
+        violation: str | None = None,
+        preview: str | None = None,
+    ):
         self.command = command
         self.exit_code = exit_code
         self.stdout = stdout
@@ -61,16 +69,16 @@ class ExecutionResult:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'command': self.command,
-            'exit_code': self.exit_code,
-            'stdout': self.stdout,
-            'stderr': self.stderr,
-            'execution_time': self.execution_time,
-            'blocked': self.blocked,
-            'violation': self.violation,
-            'preview': self.preview,
-            'timestamp': self.timestamp,
-            'success': self.success
+            "command": self.command,
+            "exit_code": self.exit_code,
+            "stdout": self.stdout,
+            "stderr": self.stderr,
+            "execution_time": self.execution_time,
+            "blocked": self.blocked,
+            "violation": self.violation,
+            "preview": self.preview,
+            "timestamp": self.timestamp,
+            "success": self.success,
         }
 
 
@@ -89,80 +97,110 @@ class SandboxExecutor:
 
     # Whitelist of allowed commands (base commands only)
     ALLOWED_COMMANDS = {
-        'apt-get', 'apt', 'dpkg',
-        'pip', 'pip3', 'python', 'python3',
-        'npm', 'yarn', 'node',
-        'git', 'make', 'cmake',
-        'gcc', 'g++', 'clang',
-        'curl', 'wget',
-        'tar', 'unzip', 'zip',
-        'echo', 'cat', 'grep', 'sed', 'awk',
-        'ls', 'pwd', 'cd', 'mkdir', 'touch',
-        'chmod', 'chown',  # Limited use
-        'systemctl',  # Read-only operations
+        "apt-get",
+        "apt",
+        "dpkg",
+        "pip",
+        "pip3",
+        "python",
+        "python3",
+        "npm",
+        "yarn",
+        "node",
+        "git",
+        "make",
+        "cmake",
+        "gcc",
+        "g++",
+        "clang",
+        "curl",
+        "wget",
+        "tar",
+        "unzip",
+        "zip",
+        "echo",
+        "cat",
+        "grep",
+        "sed",
+        "awk",
+        "ls",
+        "pwd",
+        "cd",
+        "mkdir",
+        "touch",
+        "chmod",
+        "chown",  # Limited use
+        "systemctl",  # Read-only operations
     }
 
     # Commands that require sudo (package installation only)
     SUDO_ALLOWED_COMMANDS = {
-        'apt-get install', 'apt-get update', 'apt-get upgrade',
-        'apt install', 'apt update', 'apt upgrade',
-        'pip install', 'pip3 install',
-        'dpkg -i',
+        "apt-get install",
+        "apt-get update",
+        "apt-get upgrade",
+        "apt install",
+        "apt update",
+        "apt upgrade",
+        "pip install",
+        "pip3 install",
+        "dpkg -i",
     }
 
     # Dangerous patterns to block
     DANGEROUS_PATTERNS = [
-        r'rm\s+-rf\s+[/\*]',  # rm -rf / or rm -rf /*
-        r'rm\s+-rf\s+\$HOME',  # rm -rf $HOME
-        r'rm\s+--no-preserve-root',  # rm with no-preserve-root
-        r'dd\s+if=',  # dd command
-        r'mkfs\.',  # mkfs commands
-        r'fdisk',  # fdisk
-        r'parted',  # parted
-        r'wipefs',  # wipefs
-        r'format\s+',  # format commands
-        r'>\s*/dev/',  # Redirect to device files
-        r'chmod\s+[0-7]{3,4}\s+/',  # chmod on root
-        r'chmod\s+777',  # World-writable permissions
-        r'chmod\s+\+s',  # Setuid bit
-        r'chown\s+.*\s+/',  # chown on root
+        r"rm\s+-rf\s+[/\*]",  # rm -rf / or rm -rf /*
+        r"rm\s+-rf\s+\$HOME",  # rm -rf $HOME
+        r"rm\s+--no-preserve-root",  # rm with no-preserve-root
+        r"dd\s+if=",  # dd command
+        r"mkfs\.",  # mkfs commands
+        r"fdisk",  # fdisk
+        r"parted",  # parted
+        r"wipefs",  # wipefs
+        r"format\s+",  # format commands
+        r">\s*/dev/",  # Redirect to device files
+        r"chmod\s+[0-7]{3,4}\s+/",  # chmod on root
+        r"chmod\s+777",  # World-writable permissions
+        r"chmod\s+\+s",  # Setuid bit
+        r"chown\s+.*\s+/",  # chown on root
         # Remote code execution patterns
-        r'curl\s+.*\|\s*sh',  # curl pipe to shell
-        r'curl\s+.*\|\s*bash',  # curl pipe to bash
-        r'wget\s+.*\|\s*sh',  # wget pipe to shell
-        r'wget\s+.*\|\s*bash',  # wget pipe to bash
-        r'curl\s+-o\s+-\s+.*\|',  # curl output to pipe
+        r"curl\s+.*\|\s*sh",  # curl pipe to shell
+        r"curl\s+.*\|\s*bash",  # curl pipe to bash
+        r"wget\s+.*\|\s*sh",  # wget pipe to shell
+        r"wget\s+.*\|\s*bash",  # wget pipe to bash
+        r"curl\s+-o\s+-\s+.*\|",  # curl output to pipe
         # Code injection patterns
-        r'\beval\s+',  # eval command
+        r"\beval\s+",  # eval command
         r'python\s+-c\s+["\'].*exec',  # python -c exec
         r'python\s+-c\s+["\'].*__import__',  # python -c import
-        r'base64\s+-d\s+.*\|',  # base64 decode to pipe
-        r'>\s*/etc/',  # Write to /etc
+        r"base64\s+-d\s+.*\|",  # base64 decode to pipe
+        r">\s*/etc/",  # Write to /etc
         # Privilege escalation
-        r'sudo\s+su\s*$',  # sudo su
-        r'sudo\s+-i\s*$',  # sudo -i (interactive root)
+        r"sudo\s+su\s*$",  # sudo su
+        r"sudo\s+-i\s*$",  # sudo -i (interactive root)
         # Environment manipulation
-        r'export\s+LD_PRELOAD',  # LD_PRELOAD hijacking
-        r'export\s+LD_LIBRARY_PATH.*=/',  # Library path hijacking
+        r"export\s+LD_PRELOAD",  # LD_PRELOAD hijacking
+        r"export\s+LD_LIBRARY_PATH.*=/",  # Library path hijacking
         # Fork bomb
-        r':\s*\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}',  # :(){ :|:& };:
+        r":\s*\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}",  # :(){ :|:& };:
     ]
 
     # Allowed directories for file operations
     ALLOWED_DIRECTORIES = [
-        '/tmp',
-        '/var/tmp',
-        os.path.expanduser('~'),
+        "/tmp",
+        "/var/tmp",
+        os.path.expanduser("~"),
     ]
 
-    def __init__(self,
-                 firejail_path: str | None = None,
-                 log_file: str | None = None,
-                 max_cpu_cores: int = 2,
-                 max_memory_mb: int = 2048,
-                 max_disk_mb: int = 1024,
-                 timeout_seconds: int = 300,  # 5 minutes
-                 enable_rollback: bool = True):
+    def __init__(
+        self,
+        firejail_path: str | None = None,
+        log_file: str | None = None,
+        max_cpu_cores: int = 2,
+        max_memory_mb: int = 2048,
+        max_disk_mb: int = 1024,
+        timeout_seconds: int = 300,  # 5 minutes
+        enable_rollback: bool = True,
+    ):
         """
         Initialize sandbox executor.
 
@@ -184,7 +222,7 @@ class SandboxExecutor:
 
         # Setup logging
         self.log_file = log_file or os.path.join(
-            os.path.expanduser('~'), '.cortex', 'sandbox_audit.log'
+            os.path.expanduser("~"), ".cortex", "sandbox_audit.log"
         )
         self._setup_logging()
 
@@ -204,7 +242,7 @@ class SandboxExecutor:
 
     def _find_firejail(self) -> str | None:
         """Find firejail binary in system PATH."""
-        firejail_path = shutil.which('firejail')
+        firejail_path = shutil.which("firejail")
         return firejail_path
 
     def is_firejail_available(self) -> bool:
@@ -224,7 +262,7 @@ class SandboxExecutor:
             os.makedirs(log_dir, mode=0o700, exist_ok=True)
 
         # Setup logger (avoid duplicate handlers)
-        self.logger = logging.getLogger('SandboxExecutor')
+        self.logger = logging.getLogger("SandboxExecutor")
         self.logger.setLevel(logging.INFO)
 
         # Clear existing handlers to avoid duplicates
@@ -239,9 +277,7 @@ class SandboxExecutor:
         console_handler.setLevel(logging.WARNING)
 
         # Formatter
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         file_handler.setFormatter(formatter)
         console_handler.setFormatter(formatter)
 
@@ -277,14 +313,16 @@ class SandboxExecutor:
             # Check if command is in whitelist
             if base_command not in self.ALLOWED_COMMANDS:
                 # Check if it's a sudo command
-                if base_command == 'sudo':
+                if base_command == "sudo":
                     if len(parts) < 2:
                         return False, "Sudo command without arguments"
 
-                    sudo_command = ' '.join(parts[1:3]) if len(parts) >= 3 else parts[1]
+                    sudo_command = " ".join(parts[1:3]) if len(parts) >= 3 else parts[1]
 
                     # Check if sudo command is allowed
-                    if not any(sudo_command.startswith(allowed) for allowed in self.SUDO_ALLOWED_COMMANDS):
+                    if not any(
+                        sudo_command.startswith(allowed) for allowed in self.SUDO_ALLOWED_COMMANDS
+                    ):
                         return False, f"Sudo command not whitelisted: {sudo_command}"
                 else:
                     return False, f"Command not whitelisted: {base_command}"
@@ -311,7 +349,7 @@ class SandboxExecutor:
         """
         # Extract potential file paths
         # This is a simplified check - in production, use proper shell parsing
-        path_pattern = r'[/~][^\s<>|&;]*'
+        path_pattern = r"[/~][^\s<>|&;]*"
         paths = re.findall(path_pattern, command)
 
         for path in paths:
@@ -339,23 +377,44 @@ class SandboxExecutor:
                     pass
 
             # Block access to critical system directories
-            critical_dirs = ['/boot', '/sys', '/proc', '/dev', '/etc', '/usr/bin', '/usr/sbin', '/sbin', '/bin']
+            critical_dirs = [
+                "/boot",
+                "/sys",
+                "/proc",
+                "/dev",
+                "/etc",
+                "/usr/bin",
+                "/usr/sbin",
+                "/sbin",
+                "/bin",
+            ]
             for critical in critical_dirs:
                 if abs_path.startswith(critical):
                     # Allow /dev/null for redirection
-                    if abs_path == '/dev/null':
+                    if abs_path == "/dev/null":
                         continue
                     # Allow reading from /etc for some commands (like apt-get)
-                    if critical == '/etc' and 'read' in command.lower():
+                    if critical == "/etc" and "read" in command.lower():
                         continue
                     return f"Access to critical directory blocked: {abs_path}"
 
             # Block path traversal attempts
-            if '..' in path or path.startswith('/') and not any(abs_path.startswith(os.path.expanduser(d)) for d in self.ALLOWED_DIRECTORIES):
+            if (
+                ".." in path
+                or path.startswith("/")
+                and not any(
+                    abs_path.startswith(os.path.expanduser(d)) for d in self.ALLOWED_DIRECTORIES
+                )
+            ):
                 # Allow if it's a command argument (like --config=/etc/file.conf)
-                if not any(abs_path.startswith(os.path.expanduser(d)) for d in self.ALLOWED_DIRECTORIES):
+                if not any(
+                    abs_path.startswith(os.path.expanduser(d)) for d in self.ALLOWED_DIRECTORIES
+                ):
                     # More permissive: only block if clearly dangerous
-                    if any(danger in abs_path for danger in ['/etc/passwd', '/etc/shadow', '/boot', '/sys']):
+                    if any(
+                        danger in abs_path
+                        for danger in ["/etc/passwd", "/etc/shadow", "/boot", "/sys"]
+                    ):
                         return f"Path traversal to sensitive location blocked: {abs_path}"
 
             # If not in allowed directory and not a standard command argument, warn
@@ -381,17 +440,17 @@ class SandboxExecutor:
         memory_bytes = self.max_memory_mb * 1024 * 1024
         firejail_cmd = [
             self.firejail_path,
-            '--quiet',  # Suppress firejail messages
-            '--noprofile',  # Don't use default profile
-            '--private',  # Private home directory
-            '--private-tmp',  # Private /tmp
-            f'--cpu={self.max_cpu_cores}',  # CPU limit
-            f'--rlimit-as={memory_bytes}',  # Memory limit (address space)
-            '--net=none',  # No network (adjust if needed)
-            '--noroot',  # No root access
-            '--caps.drop=all',  # Drop all capabilities
-            '--shell=none',  # No shell
-            '--seccomp',  # Enable seccomp filtering
+            "--quiet",  # Suppress firejail messages
+            "--noprofile",  # Don't use default profile
+            "--private",  # Private home directory
+            "--private-tmp",  # Private /tmp
+            f"--cpu={self.max_cpu_cores}",  # CPU limit
+            f"--rlimit-as={memory_bytes}",  # Memory limit (address space)
+            "--net=none",  # No network (adjust if needed)
+            "--noroot",  # No root access
+            "--caps.drop=all",  # Drop all capabilities
+            "--shell=none",  # No shell
+            "--seccomp",  # Enable seccomp filtering
         ]
 
         # Add command
@@ -410,11 +469,11 @@ class SandboxExecutor:
             Snapshot dictionary
         """
         snapshot = {
-            'session_id': session_id,
-            'timestamp': datetime.now().isoformat(),
-            'files_modified': [],
-            'files_created': [],
-            'file_backups': {},  # Store file contents for restoration
+            "session_id": session_id,
+            "timestamp": datetime.now().isoformat(),
+            "files_modified": [],
+            "files_created": [],
+            "file_backups": {},  # Store file contents for restoration
         }
 
         # Track files in allowed directories that might be modified
@@ -425,8 +484,8 @@ class SandboxExecutor:
                 # Note: Full file tracking would require inotify or filesystem monitoring
                 # For now, we track the directory state
                 try:
-                    snapshot['directories_tracked'] = snapshot.get('directories_tracked', [])
-                    snapshot['directories_tracked'].append(allowed_expanded)
+                    snapshot["directories_tracked"] = snapshot.get("directories_tracked", [])
+                    snapshot["directories_tracked"].append(allowed_expanded)
                 except Exception:
                     pass
 
@@ -453,10 +512,10 @@ class SandboxExecutor:
 
         # Restore backed up files
         restored_count = 0
-        for file_path, file_content in snapshot.get('file_backups', {}).items():
+        for file_path, file_content in snapshot.get("file_backups", {}).items():
             try:
                 if os.path.exists(file_path):
-                    with open(file_path, 'wb') as f:
+                    with open(file_path, "wb") as f:
                         f.write(file_content)
                     restored_count += 1
                     self.logger.debug(f"Restored file: {file_path}")
@@ -464,7 +523,7 @@ class SandboxExecutor:
                 self.logger.warning(f"Failed to restore {file_path}: {e}")
 
         # Remove created files
-        for file_path in snapshot.get('files_created', []):
+        for file_path in snapshot.get("files_created", []):
             try:
                 if os.path.exists(file_path):
                     os.remove(file_path)
@@ -472,14 +531,15 @@ class SandboxExecutor:
             except Exception as e:
                 self.logger.warning(f"Failed to remove {file_path}: {e}")
 
-        self.logger.info(f"Rollback completed: {restored_count} files restored, "
-                        f"{len(snapshot.get('files_created', []))} files removed")
+        self.logger.info(
+            f"Rollback completed: {restored_count} files restored, "
+            f"{len(snapshot.get('files_created', []))} files removed"
+        )
         return True
 
-    def execute(self,
-                command: str,
-                dry_run: bool = False,
-                enable_rollback: bool | None = None) -> ExecutionResult:
+    def execute(
+        self, command: str, dry_run: bool = False, enable_rollback: bool | None = None
+    ) -> ExecutionResult:
         """
         Execute command in sandbox.
 
@@ -503,26 +563,26 @@ class SandboxExecutor:
                 exit_code=-1,
                 blocked=True,
                 violation=violation,
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
             self._log_security_event(result)
             raise CommandBlocked(violation or "Command blocked")
 
         # Create snapshot for rollback
-        if (enable_rollback if enable_rollback is not None else self.enable_rollback):
+        if enable_rollback if enable_rollback is not None else self.enable_rollback:
             self._create_snapshot(session_id)
 
         # Dry-run mode
         if dry_run:
             firejail_cmd = self._create_firejail_command(command)
-            preview = ' '.join(shlex.quote(arg) for arg in firejail_cmd)
+            preview = " ".join(shlex.quote(arg) for arg in firejail_cmd)
 
             result = ExecutionResult(
                 command=command,
                 exit_code=0,
                 stdout=f"[DRY-RUN] Would execute: {preview}",
                 preview=preview,
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
             self._log_execution(result)
             return result
@@ -536,6 +596,7 @@ class SandboxExecutor:
             # Set resource limits if not using Firejail
             preexec_fn = None
             if not self.firejail_path:
+
                 def set_resource_limits():
                     """Set resource limits for the subprocess."""
                     try:
@@ -550,6 +611,7 @@ class SandboxExecutor:
                         resource.setrlimit(resource.RLIMIT_FSIZE, (disk_bytes, disk_bytes))
                     except (ValueError, OSError) as e:
                         self.logger.warning(f"Failed to set resource limits: {e}")
+
                 preexec_fn = set_resource_limits
 
             process = subprocess.Popen(
@@ -557,7 +619,7 @@ class SandboxExecutor:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                preexec_fn=preexec_fn
+                preexec_fn=preexec_fn,
             )
 
             stdout, stderr = process.communicate(timeout=self.timeout_seconds)
@@ -569,11 +631,13 @@ class SandboxExecutor:
                 exit_code=exit_code,
                 stdout=stdout,
                 stderr=stderr,
-                execution_time=execution_time
+                execution_time=execution_time,
             )
 
             # Rollback on failure if enabled
-            if result.failed and (enable_rollback if enable_rollback is not None else self.enable_rollback):
+            if result.failed and (
+                enable_rollback if enable_rollback is not None else self.enable_rollback
+            ):
                 self._rollback(session_id)
                 result.stderr += "\n[ROLLBACK] Changes reverted due to failure"
 
@@ -586,7 +650,7 @@ class SandboxExecutor:
                 command=command,
                 exit_code=-1,
                 stderr=f"Command timed out after {self.timeout_seconds} seconds",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
             self._log_execution(result)
             return result
@@ -596,7 +660,7 @@ class SandboxExecutor:
                 command=command,
                 exit_code=-1,
                 stderr=f"Execution error: {str(e)}",
-                execution_time=time.time() - start_time
+                execution_time=time.time() - start_time,
             )
             self._log_execution(result)
             return result
@@ -604,14 +668,14 @@ class SandboxExecutor:
     def _log_execution(self, result: ExecutionResult):
         """Log command execution to audit log."""
         log_entry = result.to_dict()
-        log_entry['type'] = 'execution'
+        log_entry["type"] = "execution"
         self.audit_log.append(log_entry)
         self.logger.info(f"Command executed: {result.command} (exit_code={result.exit_code})")
 
     def _log_security_event(self, result: ExecutionResult):
         """Log security violation."""
         log_entry = result.to_dict()
-        log_entry['type'] = 'security_violation'
+        log_entry["type"] = "security_violation"
         self.audit_log.append(log_entry)
         self.logger.warning(f"Security violation: {result.command} - {result.violation}")
 
@@ -631,8 +695,8 @@ class SandboxExecutor:
 
     def save_audit_log(self, file_path: str | None = None):
         """Save audit log to file."""
-        file_path = file_path or self.log_file.replace('.log', '_audit.json')
-        with open(file_path, 'w') as f:
+        file_path = file_path or self.log_file.replace(".log", "_audit.json")
+        with open(file_path, "w") as f:
             json.dump(self.audit_log, f, indent=2)
 
 
@@ -640,11 +704,11 @@ def main():
     """CLI entry point for sandbox executor."""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Sandboxed Command Executor')
-    parser.add_argument('command', help='Command to execute')
-    parser.add_argument('--dry-run', action='store_true', help='Dry-run mode')
-    parser.add_argument('--no-rollback', action='store_true', help='Disable rollback')
-    parser.add_argument('--timeout', type=int, default=300, help='Timeout in seconds')
+    parser = argparse.ArgumentParser(description="Sandboxed Command Executor")
+    parser.add_argument("command", help="Command to execute")
+    parser.add_argument("--dry-run", action="store_true", help="Dry-run mode")
+    parser.add_argument("--no-rollback", action="store_true", help="Disable rollback")
+    parser.add_argument("--timeout", type=int, default=300, help="Timeout in seconds")
 
     args = parser.parse_args()
 
@@ -652,9 +716,7 @@ def main():
 
     try:
         result = executor.execute(
-            args.command,
-            dry_run=args.dry_run,
-            enable_rollback=not args.no_rollback
+            args.command, dry_run=args.dry_run, enable_rollback=not args.no_rollback
         )
 
         if result.blocked:
@@ -676,6 +738,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

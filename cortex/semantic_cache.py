@@ -22,6 +22,7 @@ class CacheStats:
         hits: Number of cache hits
         misses: Number of cache misses
     """
+
     hits: int
     misses: int
 
@@ -44,6 +45,7 @@ class SemanticCache:
     Uses SQLite for persistence, simple embedding for semantic matching,
     and LRU eviction policy for size management.
     """
+
     def __init__(
         self,
         db_path: str = "/var/lib/cortex/cache.db",
@@ -58,7 +60,11 @@ class SemanticCache:
             similarity_threshold: Cosine similarity threshold for matches (default: 0.86)
         """
         self.db_path = db_path
-        self.max_entries = max_entries if max_entries is not None else int(os.environ.get("CORTEX_CACHE_MAX_ENTRIES", "500"))
+        self.max_entries = (
+            max_entries
+            if max_entries is not None
+            else int(os.environ.get("CORTEX_CACHE_MAX_ENTRIES", "500"))
+        )
         self.similarity_threshold = (
             similarity_threshold
             if similarity_threshold is not None

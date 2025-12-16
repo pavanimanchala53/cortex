@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class APIStatus(Enum):
     """Current status of the LLM API connection."""
+
     AVAILABLE = "available"
     DEGRADED = "degraded"  # Slow responses, partial functionality
     UNAVAILABLE = "unavailable"
@@ -32,6 +33,7 @@ class APIStatus(Enum):
 
 class FallbackMode(Enum):
     """Operating mode when API is unavailable."""
+
     FULL_AI = "full_ai"  # Normal operation with AI
     CACHED_ONLY = "cached_only"  # Use cached responses only
     PATTERN_MATCHING = "pattern_matching"  # Use local pattern matching
@@ -41,6 +43,7 @@ class FallbackMode(Enum):
 @dataclass
 class HealthCheckResult:
     """Result of an API health check."""
+
     status: APIStatus
     latency_ms: float | None = None
     error_message: str | None = None
@@ -53,6 +56,7 @@ class HealthCheckResult:
 @dataclass
 class CachedResponse:
     """A cached LLM response for offline use."""
+
     query_hash: str
     query: str
     response: str
@@ -72,7 +76,8 @@ class ResponseCache:
     def _init_db(self):
         """Initialize the cache database."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS response_cache (
                     query_hash TEXT PRIMARY KEY,
                     query TEXT NOT NULL,
@@ -81,11 +86,14 @@ class ResponseCache:
                     hit_count INTEGER DEFAULT 0,
                     last_used TIMESTAMP
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_last_used
                 ON response_cache(last_used)
-            """)
+            """
+            )
             conn.commit()
 
     def _hash_query(self, query: str) -> str:
@@ -100,18 +108,20 @@ class ResponseCache:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
-                "SELECT * FROM response_cache WHERE query_hash = ?",
-                (query_hash,)
+                "SELECT * FROM response_cache WHERE query_hash = ?", (query_hash,)
             )
             row = cursor.fetchone()
 
             if row:
                 # Update hit count and last_used
-                conn.execute("""
+                conn.execute(
+                    """
                     UPDATE response_cache
                     SET hit_count = hit_count + 1, last_used = CURRENT_TIMESTAMP
                     WHERE query_hash = ?
-                """, (query_hash,))
+                """,
+                    (query_hash,),
+                )
                 conn.commit()
 
                 return CachedResponse(
@@ -120,7 +130,7 @@ class ResponseCache:
                     response=row["response"],
                     created_at=datetime.fromisoformat(row["created_at"]),
                     hit_count=row["hit_count"] + 1,
-                    last_used=datetime.now()
+                    last_used=datetime.now(),
                 )
 
         return None
@@ -130,18 +140,18 @@ class ResponseCache:
         query_hash = self._hash_query(query)
 
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO response_cache
                 (query_hash, query, response, created_at, hit_count, last_used)
                 VALUES (?, ?, ?, CURRENT_TIMESTAMP, 0, NULL)
-            """, (query_hash, query, response))
+            """,
+                (query_hash, query, response),
+            )
             conn.commit()
 
         return CachedResponse(
-            query_hash=query_hash,
-            query=query,
-            response=response,
-            created_at=datetime.now()
+            query_hash=query_hash, query=query, response=response, created_at=datetime.now()
         )
 
     def get_similar(self, query: str, limit: int = 5) -> list[CachedResponse]:
@@ -151,21 +161,24 @@ class ResponseCache:
 
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                "SELECT * FROM response_cache ORDER BY hit_count DESC LIMIT 100"
-            )
+            cursor = conn.execute("SELECT * FROM response_cache ORDER BY hit_count DESC LIMIT 100")
 
             for row in cursor:
                 cached_keywords = set(row["query"].lower().split())
                 overlap = len(keywords & cached_keywords)
                 if overlap > 0:
-                    results.append((overlap, CachedResponse(
-                        query_hash=row["query_hash"],
-                        query=row["query"],
-                        response=row["response"],
-                        created_at=datetime.fromisoformat(row["created_at"]),
-                        hit_count=row["hit_count"]
-                    )))
+                    results.append(
+                        (
+                            overlap,
+                            CachedResponse(
+                                query_hash=row["query_hash"],
+                                query=row["query"],
+                                response=row["response"],
+                                created_at=datetime.fromisoformat(row["created_at"]),
+                                hit_count=row["hit_count"],
+                            ),
+                        )
+                    )
 
         # Sort by overlap score and return top matches
         results.sort(key=lambda x: x[0], reverse=True)
@@ -177,8 +190,7 @@ class ResponseCache:
 
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(
-                "DELETE FROM response_cache WHERE created_at < ?",
-                (cutoff.isoformat(),)
+                "DELETE FROM response_cache WHERE created_at < ?", (cutoff.isoformat(),)
             )
             conn.commit()
             return cursor.rowcount
@@ -188,18 +200,17 @@ class ResponseCache:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
 
-            total = conn.execute(
-                "SELECT COUNT(*) as count FROM response_cache"
-            ).fetchone()["count"]
+            total = conn.execute("SELECT COUNT(*) as count FROM response_cache").fetchone()["count"]
 
-            total_hits = conn.execute(
-                "SELECT SUM(hit_count) as hits FROM response_cache"
-            ).fetchone()["hits"] or 0
+            total_hits = (
+                conn.execute("SELECT SUM(hit_count) as hits FROM response_cache").fetchone()["hits"]
+                or 0
+            )
 
             return {
                 "total_entries": total,
                 "total_hits": total_hits,
-                "db_size_kb": self.db_path.stat().st_size / 1024 if self.db_path.exists() else 0
+                "db_size_kb": self.db_path.stat().st_size / 1024 if self.db_path.exists() else 0,
             }
 
 
@@ -217,7 +228,6 @@ class PatternMatcher:
         r"(?:install|setup|add)\s+(?:mysql|mariadb)": "sudo apt install mysql-server",
         r"(?:install|setup|add)\s+(?:redis)": "sudo apt install redis-server",
         r"(?:install|setup|add)\s+(?:mongodb)": "sudo apt install mongodb",
-
         # Development tools
         r"(?:install|setup|add)\s+(?:git)": "sudo apt install git",
         r"(?:install|setup|add)\s+(?:vim|neovim)": "sudo apt install neovim",
@@ -225,12 +235,10 @@ class PatternMatcher:
         r"(?:install|setup|add)\s+(?:wget)": "sudo apt install wget",
         r"(?:install|setup|add)\s+(?:htop)": "sudo apt install htop",
         r"(?:install|setup|add)\s+(?:tmux)": "sudo apt install tmux",
-
         # Languages
         r"(?:install|setup|add)\s+(?:rust|rustc|cargo)": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh",
         r"(?:install|setup|add)\s+(?:go|golang)": "sudo apt install golang-go",
         r"(?:install|setup|add)\s+(?:java|openjdk)": "sudo apt install default-jdk",
-
         # ML/AI
         r"(?:install|setup|add)\s+(?:cuda|nvidia.?driver)": "sudo apt install nvidia-driver-535 nvidia-cuda-toolkit",
         r"(?:install|setup|add)\s+(?:tensorflow)": "pip install tensorflow",
@@ -249,6 +257,7 @@ class PatternMatcher:
 
     def __init__(self):
         import re
+
         self.re = re
         self._compile_patterns()
 
@@ -275,7 +284,7 @@ class PatternMatcher:
                     "type": "install",
                     "command": command,
                     "confidence": 0.8,
-                    "source": "pattern_matching"
+                    "source": "pattern_matching",
                 }
 
         # Try operation patterns
@@ -293,7 +302,7 @@ class PatternMatcher:
                     "type": "operation",
                     "command": final_command,
                     "confidence": 0.7,
-                    "source": "pattern_matching"
+                    "source": "pattern_matching",
                 }
 
         return None
@@ -313,7 +322,7 @@ class GracefulDegradation:
         self,
         cache: ResponseCache | None = None,
         health_check_interval: int = 60,
-        api_timeout: float = 10.0
+        api_timeout: float = 10.0,
     ):
         self.cache = cache or ResponseCache()
         self.pattern_matcher = PatternMatcher()
@@ -345,8 +354,7 @@ class GracefulDegradation:
             else:
                 # Default: check if API key is configured
                 is_healthy = bool(
-                    os.environ.get("ANTHROPIC_API_KEY") or
-                    os.environ.get("OPENAI_API_KEY")
+                    os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")
                 )
 
             latency = (time.time() - start_time) * 1000
@@ -358,17 +366,11 @@ class GracefulDegradation:
                 status = APIStatus.UNAVAILABLE
                 self._api_failures += 1
 
-            result = HealthCheckResult(
-                status=status,
-                latency_ms=latency
-            )
+            result = HealthCheckResult(status=status, latency_ms=latency)
 
         except Exception as e:
             self._api_failures += 1
-            result = HealthCheckResult(
-                status=APIStatus.UNAVAILABLE,
-                error_message=str(e)
-            )
+            result = HealthCheckResult(status=APIStatus.UNAVAILABLE, error_message=str(e))
 
         self._last_health_check = result
         self._update_mode()
@@ -388,9 +390,7 @@ class GracefulDegradation:
             self._current_mode = FallbackMode.FULL_AI
 
     def process_query(
-        self,
-        query: str,
-        llm_fn: Callable[[str], str] | None = None
+        self, query: str, llm_fn: Callable[[str], str] | None = None
     ) -> dict[str, Any]:
         """
         Process a query with graceful degradation.
@@ -409,7 +409,7 @@ class GracefulDegradation:
             "source": None,
             "confidence": 0.0,
             "mode": self._current_mode.value,
-            "cached": False
+            "cached": False,
         }
 
         # Strategy 1: Try LLM if available
@@ -476,11 +476,15 @@ class GracefulDegradation:
 
         return {
             "mode": self._current_mode.value,
-            "api_status": self._last_health_check.status.value if self._last_health_check else "unknown",
+            "api_status": (
+                self._last_health_check.status.value if self._last_health_check else "unknown"
+            ),
             "api_failures": self._api_failures,
             "cache_entries": cache_stats["total_entries"],
             "cache_hits": cache_stats["total_hits"],
-            "last_check": self._last_health_check.checked_at.isoformat() if self._last_health_check else None
+            "last_check": (
+                self._last_health_check.checked_at.isoformat() if self._last_health_check else None
+            ),
         }
 
     def force_mode(self, mode: FallbackMode):
@@ -520,7 +524,7 @@ if __name__ == "__main__":
         "setup python for machine learning",
         "update all packages",
         "search for image editors",
-        "remove vim"
+        "remove vim",
     ]
 
     print("Graceful Degradation Demo")
@@ -533,6 +537,6 @@ if __name__ == "__main__":
         print(f"Query: {query}")
         print(f"  Source: {result['source']}")
         print(f"  Confidence: {result['confidence']:.0%}")
-        if result['command']:
+        if result["command"]:
             print(f"  Command: {result['command']}")
         print()

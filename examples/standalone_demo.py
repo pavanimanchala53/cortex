@@ -9,7 +9,7 @@ import os
 import sys
 
 # Add parent directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from progress_tracker import ProgressTracker, run_with_progress
 
@@ -132,10 +132,7 @@ async def main():
     print("\n" + "─" * 70)
     print("[Demo 1] Successful Multi-Stage Installation")
     print("─" * 70)
-    tracker1 = ProgressTracker(
-        "Installing PostgreSQL",
-        enable_notifications=True
-    )
+    tracker1 = ProgressTracker("Installing PostgreSQL", enable_notifications=True)
     await run_with_progress(tracker1, demo_simple_installation)
 
     await asyncio.sleep(1.5)
@@ -145,9 +142,7 @@ async def main():
     print("[Demo 2] Handling Installation Failures")
     print("─" * 70)
     tracker2 = ProgressTracker(
-        "Installing Broken Package",
-        enable_notifications=True,
-        notification_on_error=True
+        "Installing Broken Package", enable_notifications=True, notification_on_error=True
     )
 
     try:
@@ -161,10 +156,7 @@ async def main():
     print("\n\n" + "─" * 70)
     print("[Demo 3] Cancellation Support (Ctrl+C to test)")
     print("─" * 70)
-    tracker3 = ProgressTracker(
-        "Long Running Operation",
-        enable_notifications=False
-    )
+    tracker3 = ProgressTracker("Long Running Operation", enable_notifications=False)
 
     try:
         await run_with_progress(tracker3, demo_cancelled_operation)
@@ -186,10 +178,9 @@ async def main():
     print("\nReady for integration into Cortex Linux! 🚀\n")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\n\nDemo interrupted by user. Bye!")
         sys.exit(0)
-

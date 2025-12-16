@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from cortex.packages import PackageManager, PackageManagerType
 
@@ -20,7 +20,7 @@ class TestPackageManager(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         # Mock package manager detection to use apt for consistent testing
-        with patch('cortex.packages.subprocess.run') as mock_run:
+        with patch("cortex.packages.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
             self.pm = PackageManager(pm_type=PackageManagerType.APT)
 
@@ -299,24 +299,23 @@ class TestPackageManager(unittest.TestCase):
         self.assertEqual(self.pm._extract_action("remove docker"), "remove")
         self.assertEqual(self.pm.parse("setup git")[0], "apt install -y git")
 
-    @patch('cortex.packages.subprocess.run')
+    @patch("cortex.packages.subprocess.run")
     def test_get_package_info_apt(self, mock_run):
         """Test getting package info for apt."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout="Package: python3\nVersion: 3.10.0\nDescription: Python interpreter"
+            stdout="Package: python3\nVersion: 3.10.0\nDescription: Python interpreter",
         )
         info = self.pm.get_package_info("python3")
         self.assertIsNotNone(info)
         self.assertIn("Package", info)
 
-    @patch('cortex.packages.subprocess.run')
+    @patch("cortex.packages.subprocess.run")
     def test_get_package_info_yum(self, mock_run):
         """Test getting package info for yum."""
         pm_yum = PackageManager(pm_type=PackageManagerType.YUM)
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="Name: python3\nVersion: 3.10.0\nDescription: Python interpreter"
+            returncode=0, stdout="Name: python3\nVersion: 3.10.0\nDescription: Python interpreter"
         )
         info = pm_yum.get_package_info("python3")
         self.assertIsNotNone(info)
@@ -357,10 +356,9 @@ class TestPackageManager(unittest.TestCase):
                 # Check that at least one expected package is in the command
                 self.assertTrue(
                     any(pkg in cmd for pkg in expected_packages),
-                    f"Expected one of {expected_packages} in command: {cmd}"
+                    f"Expected one of {expected_packages} in command: {cmd}",
                 )
 
 
 if __name__ == "__main__":
     unittest.main()
-
