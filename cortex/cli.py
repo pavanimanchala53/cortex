@@ -247,6 +247,33 @@ class CortexCLI:
             print("ℹ️ Ollama selected — no API key required\n")
 
         print("Setup step complete.\n")
+        # 4️⃣ Save configuration to ~/.cortex/config.yaml
+        from pathlib import Path
+
+        import yaml
+
+        config_dir = Path.home() / ".cortex"
+        config_dir.mkdir(exist_ok=True)
+
+        config_path = config_dir / "config.yaml"
+
+        config_data = {
+            "provider": provider,
+            "hardware": {
+                "gpu": getattr(hw, "gpu", None),
+                "cpu": str(getattr(hw, "cpu", None)),
+                "memory_gb": getattr(hw, "memory_gb", None),
+            },
+            "preferences": {
+                "verbose": False,
+                "dry_run_default": False,
+            },
+        }
+
+        with open(config_path, "w") as f:
+            yaml.safe_dump(config_data, f)
+
+        print(f"💾 Configuration saved to {config_path}")
         return 0
 
     def stack(self, args: argparse.Namespace) -> int:
@@ -893,8 +920,10 @@ def main():
     # Wizard command
     wizard_parser = subparsers.add_parser("wizard", help="Configure API key interactively")
 
-    #config command
-    config_parser = subparsers.add_parser("config", help="Interactive setup wizard for Contex Configuration")
+    # config command
+    config_parser = subparsers.add_parser(
+        "config", help="Interactive setup wizard for Contex Configuration"
+    )
 
     # Status command
     status_parser = subparsers.add_parser("status", help="Show system status")
