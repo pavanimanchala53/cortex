@@ -10,12 +10,15 @@ from cortex.ask import AskHandler
 from cortex.branding import VERSION, console, cx_header, cx_print, show_banner
 from cortex.coordinator import InstallationCoordinator, InstallationStep, StepStatus
 from cortex.demo import run_demo
+<<<<<<< HEAD
 from cortex.dependency_importer import (
     DependencyImporter,
     PackageEcosystem,
     ParseResult,
     format_package_list,
 )
+=======
+>>>>>>> 94c0fa4 (feat: add environment variable manager with encryption and templates)
 from cortex.env_manager import EnvironmentManager, get_env_manager
 from cortex.installation_history import InstallationHistory, InstallationStatus, InstallationType
 from cortex.llm.interpreter import CommandInterpreter
@@ -1057,15 +1060,15 @@ class CortexCLI:
 
     def env(self, args: argparse.Namespace) -> int:
         """Handle environment variable management commands."""
+        import sys
+
         env_mgr = get_env_manager()
 
         # Handle subcommand routing
         action = getattr(args, "env_action", None)
 
         if not action:
-            self._print_error(
-                "Please specify a subcommand (set/get/list/delete/export/import/clear/template)"
-            )
+            self._print_error("Please specify a subcommand (set/get/list/delete/export/import/clear/template)")
             return 1
 
         try:
@@ -1092,15 +1095,8 @@ class CortexCLI:
             else:
                 self._print_error(f"Unknown env subcommand: {action}")
                 return 1
-        except (ValueError, OSError) as e:
-            self._print_error(f"Environment operation failed: {e}")
-            return 1
         except Exception as e:
-            self._print_error(f"Unexpected error: {e}")
-            if self.verbose:
-                import traceback
-
-                traceback.print_exc()
+            self._print_error(f"Environment operation failed: {e}")
             return 1
 
     def _env_set(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
@@ -1133,8 +1129,7 @@ class CortexCLI:
             return 1
         except ImportError as e:
             self._print_error(str(e))
-            if "cryptography" in str(e).lower():
-                cx_print("Install with: pip install cryptography", "info")
+            cx_print("Install with: pip install cryptography", "info")
             return 1
 
     def _env_get(self, env_mgr: EnvironmentManager, args: argparse.Namespace) -> int:
@@ -1175,9 +1170,9 @@ class CortexCLI:
             if var.encrypted:
                 if show_encrypted:
                     try:
-                        value = env_mgr.get_variable(app, var.key, decrypt=True)
+                        value = env_mgr.encryption.decrypt(var.value)
                         console.print(f"  {var.key}: {value} [dim](decrypted)[/dim]")
-                    except ValueError:
+                    except Exception:
                         console.print(f"  {var.key}: [red][decryption failed][/red]")
                 else:
                     console.print(f"  {var.key}: [yellow][encrypted][/yellow]")
@@ -1220,7 +1215,7 @@ class CortexCLI:
                 with open(output_file, "w", encoding="utf-8") as f:
                     f.write(content)
                 cx_print(f"✓ Exported to {output_file}", "success")
-            except OSError as e:
+            except IOError as e:
                 self._print_error(f"Failed to write file: {e}")
                 return 1
         else:
@@ -1239,7 +1234,7 @@ class CortexCLI:
 
         try:
             if input_file:
-                with open(input_file, encoding="utf-8") as f:
+                with open(input_file, "r", encoding="utf-8") as f:
                     content = f.read()
             elif not sys.stdin.isatty():
                 content = sys.stdin.read()
@@ -1265,13 +1260,12 @@ class CortexCLI:
             else:
                 cx_print("No variables imported", "info")
 
-            # Return success (0) even with partial errors - some vars imported successfully
-            return 0
+            return 0 if not errors else 1
 
         except FileNotFoundError:
             self._print_error(f"File not found: {input_file}")
             return 1
-        except OSError as e:
+        except IOError as e:
             self._print_error(f"Failed to read file: {e}")
             return 1
 
@@ -1305,9 +1299,7 @@ class CortexCLI:
         elif template_action == "apply":
             return self._env_template_apply(env_mgr, args)
         else:
-            self._print_error(
-                "Please specify: template list, template show <name>, or template apply <name> <app>"
-            )
+            self._print_error("Please specify: template list, template show <name>, or template apply <name> <app>")
             return 1
 
     def _env_template_list(self, env_mgr: EnvironmentManager) -> int:
@@ -1412,243 +1404,6 @@ class CortexCLI:
             cx_print(f"No variables to load for '{app}'", "info")
 
         return 0
-
-    # --- Import Dependencies Command ---
-    def import_deps(self, args: argparse.Namespace) -> int:
-        """Import and install dependencies from package manager files.
-
-        Supports: requirements.txt (Python), package.json (Node),
-                  Gemfile (Ruby), Cargo.toml (Rust), go.mod (Go)
-        """
-        file_path = getattr(args, "file", None)
-        scan_all = getattr(args, "all", False)
-        execute = getattr(args, "execute", False)
-        include_dev = getattr(args, "dev", False)
-
-        importer = DependencyImporter()
-
-        # Handle --all flag: scan directory for all dependency files
-        if scan_all:
-            return self._import_all(importer, execute, include_dev)
-
-        # Handle single file import
-        if not file_path:
-            self._print_error("Please specify a dependency file or use --all to scan directory")
-            cx_print("Usage: cortex import <file> [--execute] [--dev]", "info")
-            cx_print("       cortex import --all [--execute] [--dev]", "info")
-            return 1
-
-        return self._import_single_file(importer, file_path, execute, include_dev)
-
-    def _import_single_file(
-        self, importer: DependencyImporter, file_path: str, execute: bool, include_dev: bool
-    ) -> int:
-        """Import dependencies from a single file."""
-        result = importer.parse(file_path, include_dev=include_dev)
-
-        # Display parsing results
-        self._display_parse_result(result, include_dev)
-
-        if result.errors:
-            for error in result.errors:
-                self._print_error(error)
-            return 1
-
-        if not result.packages and not result.dev_packages:
-            cx_print("No packages found in file", "info")
-            return 0
-
-        # Get install command
-        install_cmd = importer.get_install_command(result.ecosystem, file_path)
-        if not install_cmd:
-            self._print_error(f"Unknown ecosystem: {result.ecosystem.value}")
-            return 1
-
-        # Dry run mode (default)
-        if not execute:
-            console.print(f"\n[bold]Install command:[/bold] {install_cmd}")
-            cx_print("\nTo install these packages, run with --execute flag", "info")
-            cx_print(f"Example: cortex import {file_path} --execute", "info")
-            return 0
-
-        # Execute mode - run the install command
-        return self._execute_install(install_cmd, result.ecosystem)
-
-    def _import_all(self, importer: DependencyImporter, execute: bool, include_dev: bool) -> int:
-        """Scan directory and import all dependency files."""
-        cx_print("Scanning directory...", "info")
-
-        results = importer.scan_directory(include_dev=include_dev)
-
-        if not results:
-            cx_print("No dependency files found in current directory", "info")
-            return 0
-
-        # Display all found files
-        total_packages = 0
-        total_dev_packages = 0
-
-        for file_path, result in results.items():
-            filename = os.path.basename(file_path)
-            if result.errors:
-                console.print(f"   [red]✗[/red]  {filename} (error: {result.errors[0]})")
-            else:
-                pkg_count = result.prod_count
-                dev_count = result.dev_count if include_dev else 0
-                total_packages += pkg_count
-                total_dev_packages += dev_count
-                dev_str = f" + {dev_count} dev" if dev_count > 0 else ""
-                console.print(f"   [green]✓[/green]  {filename} ({pkg_count} packages{dev_str})")
-
-        console.print()
-
-        if total_packages == 0 and total_dev_packages == 0:
-            cx_print("No packages found in dependency files", "info")
-            return 0
-
-        # Generate install commands
-        commands = importer.get_install_commands_for_results(results)
-
-        if not commands:
-            cx_print("No install commands generated", "info")
-            return 0
-
-        # Dry run mode (default)
-        if not execute:
-            console.print("[bold]Install commands:[/bold]")
-            for cmd_info in commands:
-                console.print(f"  • {cmd_info['command']}")
-            console.print()
-            cx_print("To install all packages, run with --execute flag", "info")
-            cx_print("Example: cortex import --all --execute", "info")
-            return 0
-
-        # Execute mode - confirm before installing
-        total = total_packages + total_dev_packages
-        confirm = input(f"\nInstall all {total} packages? [Y/n]: ")
-        if confirm.lower() not in ["", "y", "yes"]:
-            cx_print("Installation cancelled", "info")
-            return 0
-
-        # Execute all install commands
-        return self._execute_multi_install(commands)
-
-    def _display_parse_result(self, result: ParseResult, include_dev: bool) -> None:
-        """Display the parsed packages from a dependency file."""
-        ecosystem_names = {
-            PackageEcosystem.PYTHON: "Python",
-            PackageEcosystem.NODE: "Node",
-            PackageEcosystem.RUBY: "Ruby",
-            PackageEcosystem.RUST: "Rust",
-            PackageEcosystem.GO: "Go",
-        }
-
-        ecosystem_name = ecosystem_names.get(result.ecosystem, "Unknown")
-        filename = os.path.basename(result.file_path)
-
-        cx_print(f"\n📋 Found {result.prod_count} {ecosystem_name} packages", "info")
-
-        if result.packages:
-            console.print("\n[bold]Packages:[/bold]")
-            for pkg in result.packages[:15]:  # Show first 15
-                version_str = f" ({pkg.version})" if pkg.version else ""
-                console.print(f"  • {pkg.name}{version_str}")
-            if len(result.packages) > 15:
-                console.print(f"  [dim]... and {len(result.packages) - 15} more[/dim]")
-
-        if include_dev and result.dev_packages:
-            console.print(f"\n[bold]Dev packages:[/bold] ({result.dev_count})")
-            for pkg in result.dev_packages[:10]:
-                version_str = f" ({pkg.version})" if pkg.version else ""
-                console.print(f"  • {pkg.name}{version_str}")
-            if len(result.dev_packages) > 10:
-                console.print(f"  [dim]... and {len(result.dev_packages) - 10} more[/dim]")
-
-        if result.warnings:
-            console.print()
-            for warning in result.warnings:
-                cx_print(f"⚠ {warning}", "warning")
-
-    def _execute_install(self, command: str, ecosystem: PackageEcosystem) -> int:
-        """Execute a single install command."""
-        ecosystem_names = {
-            PackageEcosystem.PYTHON: "Python",
-            PackageEcosystem.NODE: "Node",
-            PackageEcosystem.RUBY: "Ruby",
-            PackageEcosystem.RUST: "Rust",
-            PackageEcosystem.GO: "Go",
-        }
-
-        ecosystem_name = ecosystem_names.get(ecosystem, "")
-        cx_print(f"\n✓ Installing {ecosystem_name} packages...", "success")
-
-        def progress_callback(current: int, total: int, step: InstallationStep) -> None:
-            status_emoji = "⏳"
-            if step.status == StepStatus.SUCCESS:
-                status_emoji = "✅"
-            elif step.status == StepStatus.FAILED:
-                status_emoji = "❌"
-            console.print(f"[{current}/{total}] {status_emoji} {step.description}")
-
-        coordinator = InstallationCoordinator(
-            commands=[command],
-            descriptions=[f"Install {ecosystem_name} packages"],
-            timeout=600,  # 10 minutes for package installation
-            stop_on_error=True,
-            progress_callback=progress_callback,
-        )
-
-        result = coordinator.execute()
-
-        if result.success:
-            self._print_success(f"{ecosystem_name} packages installed successfully!")
-            console.print(f"Completed in {result.total_duration:.2f} seconds")
-            return 0
-        else:
-            self._print_error("Installation failed")
-            if result.error_message:
-                console.print(f"Error: {result.error_message}", style="red")
-            return 1
-
-    def _execute_multi_install(self, commands: list[dict[str, str]]) -> int:
-        """Execute multiple install commands."""
-        all_commands = [cmd["command"] for cmd in commands]
-        all_descriptions = [cmd["description"] for cmd in commands]
-
-        def progress_callback(current: int, total: int, step: InstallationStep) -> None:
-            status_emoji = "⏳"
-            if step.status == StepStatus.SUCCESS:
-                status_emoji = "✅"
-            elif step.status == StepStatus.FAILED:
-                status_emoji = "❌"
-            console.print(f"\n[{current}/{total}] {status_emoji} {step.description}")
-            console.print(f"  Command: {step.command}")
-
-        coordinator = InstallationCoordinator(
-            commands=all_commands,
-            descriptions=all_descriptions,
-            timeout=600,
-            stop_on_error=True,
-            progress_callback=progress_callback,
-        )
-
-        console.print("\n[bold]Installing packages...[/bold]")
-        result = coordinator.execute()
-
-        if result.success:
-            self._print_success("\nAll packages installed successfully!")
-            console.print(f"Completed in {result.total_duration:.2f} seconds")
-            return 0
-        else:
-            if result.failed_step is not None:
-                self._print_error(f"\nInstallation failed at step {result.failed_step + 1}")
-            else:
-                self._print_error("\nInstallation failed")
-            if result.error_message:
-                console.print(f"Error: {result.error_message}", style="red")
-            return 1
-
-    # --------------------------
 
 
 def show_rich_help():
@@ -1844,56 +1599,6 @@ def main():
     cache_subs = cache_parser.add_subparsers(dest="cache_action", help="Cache actions")
     cache_subs.add_parser("stats", help="Show cache statistics")
 
-    # --- Sandbox Commands (Docker-based package testing) ---
-    sandbox_parser = subparsers.add_parser(
-        "sandbox", help="Test packages in isolated Docker sandbox"
-    )
-    sandbox_subs = sandbox_parser.add_subparsers(dest="sandbox_action", help="Sandbox actions")
-
-    # sandbox create <name> [--image IMAGE]
-    sandbox_create_parser = sandbox_subs.add_parser("create", help="Create a sandbox environment")
-    sandbox_create_parser.add_argument("name", help="Unique name for the sandbox")
-    sandbox_create_parser.add_argument(
-        "--image", default="ubuntu:22.04", help="Docker image to use (default: ubuntu:22.04)"
-    )
-
-    # sandbox install <name> <package>
-    sandbox_install_parser = sandbox_subs.add_parser("install", help="Install a package in sandbox")
-    sandbox_install_parser.add_argument("name", help="Sandbox name")
-    sandbox_install_parser.add_argument("package", help="Package to install")
-
-    # sandbox test <name> [package]
-    sandbox_test_parser = sandbox_subs.add_parser("test", help="Run tests in sandbox")
-    sandbox_test_parser.add_argument("name", help="Sandbox name")
-    sandbox_test_parser.add_argument("package", nargs="?", help="Specific package to test")
-
-    # sandbox promote <name> <package> [--dry-run]
-    sandbox_promote_parser = sandbox_subs.add_parser(
-        "promote", help="Install tested package on main system"
-    )
-    sandbox_promote_parser.add_argument("name", help="Sandbox name")
-    sandbox_promote_parser.add_argument("package", help="Package to promote")
-    sandbox_promote_parser.add_argument(
-        "--dry-run", action="store_true", help="Show command without executing"
-    )
-    sandbox_promote_parser.add_argument(
-        "-y", "--yes", action="store_true", help="Skip confirmation prompt"
-    )
-
-    # sandbox cleanup <name> [--force]
-    sandbox_cleanup_parser = sandbox_subs.add_parser("cleanup", help="Remove a sandbox environment")
-    sandbox_cleanup_parser.add_argument("name", help="Sandbox name to remove")
-    sandbox_cleanup_parser.add_argument("-f", "--force", action="store_true", help="Force removal")
-
-    # sandbox list
-    sandbox_subs.add_parser("list", help="List all sandbox environments")
-
-    # sandbox exec <name> <command...>
-    sandbox_exec_parser = sandbox_subs.add_parser("exec", help="Execute command in sandbox")
-    sandbox_exec_parser.add_argument("name", help="Sandbox name")
-    sandbox_exec_parser.add_argument("command", nargs="+", help="Command to execute")
-    # --------------------------
-
     # --- Environment Variable Management Commands ---
     env_parser = subparsers.add_parser("env", help="Manage environment variables")
     env_subs = env_parser.add_subparsers(dest="env_action", help="Environment actions")
@@ -1903,15 +1608,16 @@ def main():
     env_set_parser.add_argument("app", help="Application name")
     env_set_parser.add_argument("key", help="Variable name")
     env_set_parser.add_argument("value", help="Variable value")
-    env_set_parser.add_argument("--encrypt", "-e", action="store_true", help="Encrypt the value")
     env_set_parser.add_argument(
-        "--type",
-        "-t",
-        choices=["string", "url", "port", "boolean", "integer", "path"],
-        default="string",
-        help="Variable type for validation",
+        "--encrypt", "-e", action="store_true", help="Encrypt the value"
     )
-    env_set_parser.add_argument("--description", "-d", help="Description of the variable")
+    env_set_parser.add_argument(
+        "--type", "-t", choices=["string", "url", "port", "boolean", "integer", "path"],
+        default="string", help="Variable type for validation"
+    )
+    env_set_parser.add_argument(
+        "--description", "-d", help="Description of the variable"
+    )
 
     # env get <app> <KEY> [--decrypt]
     env_get_parser = env_subs.add_parser("get", help="Get an environment variable")
@@ -1937,22 +1643,27 @@ def main():
     env_export_parser = env_subs.add_parser("export", help="Export variables to .env format")
     env_export_parser.add_argument("app", help="Application name")
     env_export_parser.add_argument(
-        "--include-encrypted",
-        action="store_true",
-        help="Include decrypted values of encrypted variables",
+        "--include-encrypted", action="store_true",
+        help="Include decrypted values of encrypted variables"
     )
-    env_export_parser.add_argument("--output", "-o", help="Output file (default: stdout)")
+    env_export_parser.add_argument(
+        "--output", "-o", help="Output file (default: stdout)"
+    )
 
     # env import <app> [file] [--encrypt-keys KEYS]
     env_import_parser = env_subs.add_parser("import", help="Import variables from .env format")
     env_import_parser.add_argument("app", help="Application name")
     env_import_parser.add_argument("file", nargs="?", help="Input file (default: stdin)")
-    env_import_parser.add_argument("--encrypt-keys", help="Comma-separated list of keys to encrypt")
+    env_import_parser.add_argument(
+        "--encrypt-keys", help="Comma-separated list of keys to encrypt"
+    )
 
     # env clear <app> [--force]
     env_clear_parser = env_subs.add_parser("clear", help="Clear all variables for an app")
     env_clear_parser.add_argument("app", help="Application name")
-    env_clear_parser.add_argument("--force", "-f", action="store_true", help="Skip confirmation")
+    env_clear_parser.add_argument(
+        "--force", "-f", action="store_true", help="Skip confirmation"
+    )
 
     # env apps - list all apps with environments
     env_subs.add_parser("apps", help="List all apps with stored environments")
@@ -1963,9 +1674,7 @@ def main():
 
     # env template subcommands
     env_template_parser = env_subs.add_parser("template", help="Manage environment templates")
-    env_template_subs = env_template_parser.add_subparsers(
-        dest="template_action", help="Template actions"
-    )
+    env_template_subs = env_template_parser.add_subparsers(dest="template_action", help="Template actions")
 
     # env template list
     env_template_subs.add_parser("list", help="List available templates")
