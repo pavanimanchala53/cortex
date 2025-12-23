@@ -190,8 +190,10 @@ class CortexCLI:
         print("\n🔍 Detecting hardware...")
         hw = detect_hardware()
 
+        gpu_info = None
         if getattr(hw, "gpu", None):
             print(f"✔ GPU detected: {hw.gpu}")
+            gpu_info = str(hw.gpu)
             has_gpu = True
         else:
             print("⚠️ No GPU detected (CPU mode)")
@@ -270,7 +272,7 @@ class CortexCLI:
         config_data = {
             "provider": provider,
             "hardware": {
-                "gpu": getattr(hw, "gpu", None),
+                "gpu": gpu_info,
                 "cpu": str(getattr(hw, "cpu", None)),
                 "memory_gb": getattr(hw, "memory_gb", None),
             },
