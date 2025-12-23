@@ -72,11 +72,6 @@ class SystemDoctor:
 
         # Run checks with spinner
         with console.status("[bold cyan][CX] Scanning system...[/bold cyan]", spinner="dots"):
-            # System Info (includes API provider and security features)
-            self._print_section("System Configuration")
-            self._check_api_keys()
-            self._check_security_tools()
-
             # Python & Dependencies
             self._print_section("Python & Dependencies")
             self._check_python()
@@ -88,6 +83,7 @@ class SystemDoctor:
 
             self._print_section("AI & Services")
             self._check_ollama()
+            self._check_api_keys()
 
             # System Resources
             self._print_section("System Resources")
