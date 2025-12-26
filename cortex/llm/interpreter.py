@@ -377,10 +377,26 @@ Respond with ONLY this JSON format (no explanations):
         Handles strict JSON (OpenAI/Claude) and loose output (Ollama).
         """
         try:
-            # Remove code fences
-            if "```" in content:
+            # Strip markdown code blocks
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
                 parts = content.split("```")
-                content = next((p for p in parts if "commands" in p), content)
+                if len(parts) >= 3:
+                    content = parts[1].strip()
+
+            # Try to find JSON object in the content
+            import re
+
+            # Look for {"commands": [...]} pattern
+            json_match = re.search(
+                r'\{\s*["\']commands["\']\s*:\s*\[.*?\]\s*\}', content, re.DOTALL
+            )
+            if json_match:
+                content = json_match.group(0)
+
+            # Try to repair common JSON issues
+            content = self._repair_json(content)
 
             # Attempt to isolate JSON
             start = content.find("{")
@@ -397,22 +413,28 @@ Respond with ONLY this JSON format (no explanations):
             if isinstance(commands, list):
                 return [c for c in commands if isinstance(c, str) and c.strip()]
 
-        except Exception:
-            pass  # fall through to heuristic extraction
+            # Handle both formats:
+            # 1. ["cmd1", "cmd2"] - direct string array
+            # 2. [{"command": "cmd1"}, {"command": "cmd2"}] - object array
+            result = []
+            for cmd in commands:
+                if isinstance(cmd, str):
+                    # Direct string
+                    if cmd:
+                        result.append(cmd)
+                elif isinstance(cmd, dict):
+                    # Object with "command" key
+                    cmd_str = cmd.get("command", "")
+                    if cmd_str:
+                        result.append(cmd_str)
 
-        # 🔁 Fallback: heuristic extraction (Ollama-safe)
-        commands = []
-        for line in content.splitlines():
-            line = line.strip()
+            return result
+        except (json.JSONDecodeError, ValueError) as e:
+            # Log the problematic content for debugging
+            import sys
 
-            # crude but safe: common install commands
-            if line.startswith(("sudo ", "apt ", "apt-get ")):
-                commands.append(line)
-
-        if commands:
-            return commands
-
-        raise ValueError("Failed to parse LLM response: no valid commands found")
+            print(f"\nDebug: Failed to parse JSON. Raw content:\n{content[:500]}", file=sys.stderr)
+            raise ValueError(f"Failed to parse LLM response: {str(e)}")
 
     def _validate_commands(self, commands: list[str]) -> list[str]:
         dangerous_patterns = [

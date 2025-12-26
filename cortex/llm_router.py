@@ -516,6 +516,11 @@ class LLMRouter:
                         "tokens": self.provider_stats[LLMProvider.KIMI_K2]["tokens"],
                         "cost_usd": round(self.provider_stats[LLMProvider.KIMI_K2]["cost"], 4),
                     },
+                    "ollama": {
+                        "requests": self.provider_stats[LLMProvider.OLLAMA]["requests"],
+                        "tokens": self.provider_stats[LLMProvider.OLLAMA]["tokens"],
+                        "cost_usd": round(self.provider_stats[LLMProvider.OLLAMA]["cost"], 4),
+                    },
                 },
             }
 

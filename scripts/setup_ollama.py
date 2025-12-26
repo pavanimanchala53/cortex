@@ -267,18 +267,17 @@ def prompt_model_selection(models: list[dict[str, Any]], installed: list[str]) -
 
         try:
             choice_num = int(choice)
+            if 1 <= choice_num <= len(models):
+                return models[choice_num - 1]["name"]
+            elif choice_num == len(models) + 1:
+                custom = input(f"{Colors.BOLD}Enter model name: {Colors.ENDC}").strip()
+                if custom:
+                    return custom
+            elif choice_num == len(models) + 2:
+                return None
         except ValueError:
-            print_error("Invalid input. Please enter a number.")
-            continue
+            pass
 
-        if 1 <= choice_num <= len(models):
-            return models[choice_num - 1]["name"]
-        elif choice_num == len(models) + 1:
-            custom = input(f"{Colors.BOLD}Enter model name: {Colors.ENDC}").strip()
-            if custom:
-                return custom
-        elif choice_num == len(models) + 2:
-            return None
         print_error("Invalid choice. Please try again.")
 
 
@@ -359,7 +358,6 @@ def configure_cortex(model_name: str) -> bool:
             with open(config_file) as f:
                 config = json.load(f)
         except Exception:
-            # If the existing config cannot be read (e.g., corrupted JSON), ignore it and start fresh.
             pass
 
     # Update config
