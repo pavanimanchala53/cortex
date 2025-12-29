@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+from typing import Optional
 
 import requests
 
@@ -76,7 +77,7 @@ def extract_co_authors(message: str) -> list[tuple[str, str]]:
 def load_cla_signers() -> dict:
     """Load CLA signers from JSON file."""
     try:
-        with open(CLA_FILE) as f:
+        with open(CLA_FILE, "r") as f:
             return json.load(f)
     except FileNotFoundError:
         print(f"Warning: {CLA_FILE} not found, creating empty signer list")
@@ -86,7 +87,11 @@ def load_cla_signers() -> dict:
         sys.exit(1)
 
 
-def is_signer(username: str | None, email: str, signers: dict) -> tuple[bool, str | None]:
+def is_signer(
+    username: Optional[str],
+    email: str,
+    signers: dict
+) -> tuple[bool, Optional[str]]:
     """
     Check if a user has signed the CLA.
     Returns (is_signed, signing_entity).
@@ -126,7 +131,12 @@ def is_signer(username: str | None, email: str, signers: dict) -> tuple[bool, st
     return False, None
 
 
-def get_pr_authors(owner: str, repo: str, pr_number: int, token: str) -> list[dict]:
+def get_pr_authors(
+    owner: str,
+    repo: str,
+    pr_number: int,
+    token: str
+) -> list[dict]:
     """
     Get all unique authors from PR commits.
     Returns list of {username, email, name, source}.
@@ -134,7 +144,10 @@ def get_pr_authors(owner: str, repo: str, pr_number: int, token: str) -> list[di
     authors = {}
 
     # Get PR commits
-    commits = github_request(f"repos/{owner}/{repo}/pulls/{pr_number}/commits?per_page=100", token)
+    commits = github_request(
+        f"repos/{owner}/{repo}/pulls/{pr_number}/commits?per_page=100",
+        token
+    )
 
     for commit in commits:
         sha = commit["sha"]
@@ -156,7 +169,7 @@ def get_pr_authors(owner: str, repo: str, pr_number: int, token: str) -> list[di
                     "username": author_username,
                     "email": author_email,
                     "name": author_name,
-                    "source": f"commit {sha[:7]}",
+                    "source": f"commit {sha[:7]}"
                 }
 
         # Committer (if different)
@@ -174,7 +187,7 @@ def get_pr_authors(owner: str, repo: str, pr_number: int, token: str) -> list[di
                     "username": committer_username,
                     "email": committer_email,
                     "name": committer_name,
-                    "source": f"committer {sha[:7]}",
+                    "source": f"committer {sha[:7]}"
                 }
 
         # Co-authors from commit message
@@ -186,7 +199,7 @@ def get_pr_authors(owner: str, repo: str, pr_number: int, token: str) -> list[di
                     "username": None,
                     "email": co_email,
                     "name": co_name,
-                    "source": f"co-author {sha[:7]}",
+                    "source": f"co-author {sha[:7]}"
                 }
 
     return list(authors.values())
@@ -198,7 +211,7 @@ def post_comment(
     pr_number: int,
     token: str,
     missing_authors: list[dict],
-    signed_authors: list[tuple[dict, str]],
+    signed_authors: list[tuple[dict, str]]
 ) -> None:
     """Post or update CLA status comment on PR."""
     # Build comment body
@@ -239,7 +252,8 @@ def post_comment(
 
     # Check for existing CLA comment to update
     comments = github_request(
-        f"repos/{owner}/{repo}/issues/{pr_number}/comments?per_page=100", token
+        f"repos/{owner}/{repo}/issues/{pr_number}/comments?per_page=100",
+        token
     )
 
     cla_comment_id = None
@@ -257,17 +271,23 @@ def post_comment(
         requests.patch(
             f"{GITHUB_API}/repos/{owner}/{repo}/issues/comments/{cla_comment_id}",
             headers=headers,
-            json={"body": comment_body},
+            json={"body": comment_body}
         )
     else:
         # Create new comment
         github_post(
-            f"repos/{owner}/{repo}/issues/{pr_number}/comments", token, {"body": comment_body}
+            f"repos/{owner}/{repo}/issues/{pr_number}/comments",
+            token,
+            {"body": comment_body}
         )
 
 
 def post_success_comment(
-    owner: str, repo: str, pr_number: int, token: str, signed_authors: list[tuple[dict, str]]
+    owner: str,
+    repo: str,
+    pr_number: int,
+    token: str,
+    signed_authors: list[tuple[dict, str]]
 ) -> None:
     """Post success comment or update existing CLA comment."""
     lines = ["## CLA Verification Passed\n\n"]
@@ -288,7 +308,8 @@ def post_success_comment(
 
     # Check for existing CLA comment to update
     comments = github_request(
-        f"repos/{owner}/{repo}/issues/{pr_number}/comments?per_page=100", token
+        f"repos/{owner}/{repo}/issues/{pr_number}/comments?per_page=100",
+        token
     )
 
     for comment in comments:
@@ -301,7 +322,7 @@ def post_success_comment(
             requests.patch(
                 f"{GITHUB_API}/repos/{owner}/{repo}/issues/comments/{comment['id']}",
                 headers=headers,
-                json={"body": comment_body},
+                json={"body": comment_body}
             )
             return
 
@@ -309,7 +330,9 @@ def post_success_comment(
     # (single author PRs don't need a "you signed" comment)
     if len(signed_authors) > 1:
         github_post(
-            f"repos/{owner}/{repo}/issues/{pr_number}/comments", token, {"body": comment_body}
+            f"repos/{owner}/{repo}/issues/{pr_number}/comments",
+            token,
+            {"body": comment_body}
         )
 
 
@@ -337,14 +360,8 @@ def main():
 
     # Allowlist for bots
     bot_patterns = [
-        "dependabot",
-        "github-actions",
-        "renovate",
-        "codecov",
-        "sonarcloud",
-        "coderabbitai",
-        "sonarqubecloud",
-        "noreply@github.com",
+        "dependabot", "github-actions", "renovate", "codecov",
+        "sonarcloud", "coderabbitai", "sonarqubecloud", "noreply@github.com"
     ]
 
     for author in authors:
