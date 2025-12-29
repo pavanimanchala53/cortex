@@ -6,7 +6,8 @@
 
 <p align="center">
   <strong>AI-Powered Package Manager for Debian/Ubuntu</strong><br>
-  Install software using natural language. No more memorizing package names.
+  Install software using natural language.
+  
 </p>
 
 <p align="center">
