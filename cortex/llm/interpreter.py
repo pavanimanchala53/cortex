@@ -28,16 +28,29 @@ class CommandInterpreter:
         provider: str = "openai",
         role: str = "default",
         model: str | None = None,
-        cache: Any | None = None,
+        cache: Optional["SemanticCache"] = None,
     ):
         from cortex.roles.loader import load_role
 
+        Args:
+            api_key: API key for the LLM provider
+            provider: Provider name ("openai", "claude", or "ollama")
+            model: Optional model name override
+            cache: Optional SemanticCache instance for response caching
+        """
         self.api_key = api_key
         self.provider = APIProvider(provider.lower())
-        self.cache = cache
-        self.role_name = role
-        self.role = load_role(role)
-        self.system_prompt = self.role.get("system_prompt", "")
+
+        if cache is None:
+            try:
+                from cortex.semantic_cache import SemanticCache
+
+                self.cache: SemanticCache | None = SemanticCache()
+            except (ImportError, OSError):
+                # Cache initialization can fail due to missing dependencies or permissions
+                self.cache = None
+        else:
+            self.cache = cache
 
         if model:
             self.model = model
@@ -114,12 +127,20 @@ class CommandInterpreter:
         Args:
             simplified: If True, return a shorter prompt optimized for local models
         """
-
         if simplified:
-            base_prompt = """You must respond with ONLY a JSON object. No explanations, no markdown, no code blocks.
+            return """You must respond with ONLY a JSON object. No explanations, no markdown, no code blocks.
 
-    Format:
-    {"commands": ["command1", "command2"]}
+Format: {"commands": ["command1", "command2"]}
+
+Example input: install nginx
+Example output: {"commands": ["sudo apt update", "sudo apt install -y nginx"]}
+
+Rules:
+- Use apt for Ubuntu packages
+- Add sudo for system commands
+- Return ONLY the JSON object"""
+
+        return """You are a Linux system command expert. Convert natural language requests into safe, validated bash commands.
 
     Rules:
     - Use apt for Ubuntu packages
@@ -311,6 +332,20 @@ Respond with ONLY this JSON format (no explanations):
     def parse(self, user_input: str, validate: bool = True) -> list[str]:
         if not user_input or not user_input.strip():
             raise ValueError("User input cannot be empty")
+
+        cache_system_prompt = (
+            self._get_system_prompt() + f"\n\n[cortex-cache-validate={bool(validate)}]"
+        )
+
+        if self.cache is not None:
+            cached = self.cache.get_commands(
+                prompt=user_input,
+                provider=self.provider.value,
+                model=self.model,
+                system_prompt=cache_system_prompt,
+            )
+            if cached is not None:
+                return cached
 
         if self.provider == APIProvider.OPENAI:
             commands = self._call_openai(user_input)
