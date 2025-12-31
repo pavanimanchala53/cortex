@@ -16,6 +16,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+myenv/
 
 # ==============================
 # Distribution / Packaging
@@ -42,7 +43,6 @@ MANIFEST
 # ==============================
 # PyInstaller
 # ==============================
-# Usually contains temporary files from pyinstaller builds
 *.manifest
 *.spec
 

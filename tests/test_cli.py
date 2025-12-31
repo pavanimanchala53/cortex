@@ -9,7 +9,6 @@ from cortex.cli import CortexCLI, main
 
 
 class TestCortexCLI(unittest.TestCase):
-
     def setUp(self):
         self.cli = CortexCLI()
 
@@ -61,8 +60,13 @@ class TestCortexCLI(unittest.TestCase):
 
     @patch.dict(os.environ, {}, clear=True)
     def test_install_no_api_key(self):
-        result = self.cli.install("docker")
-        self.assertEqual(result, 1)
+        # When no API key is set, the CLI falls back to Ollama.
+        # If Ollama is running, this should succeed. If not, it should fail.
+        # We'll mock Ollama to be unavailable to test the failure case.
+        with patch("cortex.llm.interpreter.CommandInterpreter.parse") as mock_parse:
+            mock_parse.side_effect = RuntimeError("Ollama not available")
+            result = self.cli.install("docker")
+            self.assertEqual(result, 1)
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-openai-key-123"}, clear=True)
     @patch("cortex.cli.CommandInterpreter")
@@ -184,7 +188,7 @@ class TestCortexCLI(unittest.TestCase):
         mock_install.return_value = 0
         result = main()
         self.assertEqual(result, 0)
-        mock_install.assert_called_once_with("docker", execute=False, dry_run=False)
+        mock_install.assert_called_once_with("docker", execute=False, dry_run=False, parallel=False)
 
     @patch("sys.argv", ["cortex", "install", "docker", "--execute"])
     @patch("cortex.cli.CortexCLI.install")
@@ -192,7 +196,7 @@ class TestCortexCLI(unittest.TestCase):
         mock_install.return_value = 0
         result = main()
         self.assertEqual(result, 0)
-        mock_install.assert_called_once_with("docker", execute=True, dry_run=False)
+        mock_install.assert_called_once_with("docker", execute=True, dry_run=False, parallel=False)
 
     @patch("sys.argv", ["cortex", "install", "docker", "--dry-run"])
     @patch("cortex.cli.CortexCLI.install")
@@ -200,7 +204,7 @@ class TestCortexCLI(unittest.TestCase):
         mock_install.return_value = 0
         result = main()
         self.assertEqual(result, 0)
-        mock_install.assert_called_once_with("docker", execute=False, dry_run=True)
+        mock_install.assert_called_once_with("docker", execute=False, dry_run=True, parallel=False)
 
     def test_spinner_animation(self):
         initial_idx = self.cli.spinner_idx
