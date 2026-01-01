@@ -45,12 +45,10 @@ class CortexCLI:
         """
         Combine optional stdin context with user prompt.
         """
-        if getattr(self, "stdin_data", None):
+        stdin_data = getattr(self, "stdin_data", None)
+        if stdin_data:
             return (
-                "Context (from stdin):\n"
-                f"{self.stdin_data}\n\n"
-                "User instruction:\n"
-                f"{user_prompt}"
+                "Context (from stdin):\n" f"{stdin_data}\n\n" "User instruction:\n" f"{user_prompt}"
             )
         return user_prompt
 

@@ -140,7 +140,7 @@ async def test_rate_limiting():
 
         print(f"Processing {len(requests)} requests with max_concurrent=2...")
         start = time.time()
-        responses = await router.complete_batch(requests, max_concurrent=2)
+        await router.complete_batch(requests, max_concurrent=2)
         elapsed = time.time() - start
 
         print("✅ Rate limiting working!")

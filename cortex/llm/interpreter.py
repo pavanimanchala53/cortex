@@ -147,7 +147,7 @@ Rules:
     3. Commands should be atomic and sequential
     4. Avoid destructive operations without explicit user confirmation
     5. Use package managers appropriate for Debian/Ubuntu systems (apt)
-    6. Include necessary privilege escalation (sudo) when required
+    6. Add sudo for system commands
     7. Validate command syntax before returning
 
     Format:
