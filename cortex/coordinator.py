@@ -88,8 +88,15 @@ class InstallationCoordinator:
         if approval_policy is not None:
             self.approval_policy = approval_policy
         else:
-            # Default behavior for library/tests: full-auto
-            self.approval_policy = get_approval_policy(ApprovalMode.FULL_AUTO)
+            approval_mode = ApprovalMode.FULL_AUTO
+            try:
+                prefs = UserPreferences.load()
+                if hasattr(prefs, "approval_mode"):
+                    approval_mode = prefs.approval_mode
+            except Exception:
+                pass
+
+            self.approval_policy = get_approval_policy(approval_mode)
 
     @classmethod
     def from_plan(
@@ -171,21 +178,35 @@ class InstallationCoordinator:
         return True, None
 
     def _execute_command(self, step: InstallationStep) -> bool:
+        from cortex.approval import ApprovalMode
+
         step.status = StepStatus.RUNNING
         step.start_time = time.time()
 
         self._log(f"Executing: {step.command}")
-        # 🔐 Approval check: shell command execution
-        if not self.approval_policy.allow("shell_command"):
+
+        # 🚫 Suggest mode must NEVER execute commands
+        if self.approval_policy.mode == ApprovalMode.SUGGEST:
             step.status = StepStatus.SKIPPED
-            step.error = "Shell execution disabled by approval policy"
-            self._log("Blocked by approval policy")
+            step.error = "Execution skipped in suggest mode"
+            step.end_time = step.start_time
+            self._log("Suggest mode: execution skipped")
             return False
 
+        # 🔐 Approval check: shell command execution
+        if not self.approval_policy.allow("shell_command"):
+            step.status = StepStatus.FAILED
+            step.error = "Shell execution disabled by approval policy"
+            step.end_time = step.start_time
+            self._log(f"Execution blocked by approval policy: {step.command}")
+            return False
+
+        # 🔐 Approval check: confirmation required
         if self.approval_policy.requires_confirmation("shell_command"):
             if not confirm_action("Execute planned shell commands?"):
-                step.status = StepStatus.SKIPPED
+                step.status = StepStatus.FAILED
                 step.error = "User declined execution"
+                step.end_time = time.time()
                 self._log("Execution declined by user")
                 return False
 
@@ -199,11 +220,12 @@ class InstallationCoordinator:
             return False
 
         try:
-            # Use shell=True carefully - commands are validated first
-            # For complex shell commands (pipes, redirects), shell=True is needed
-            # Simple commands could use shlex.split() with shell=False
             result = subprocess.run(
-                step.command, shell=True, capture_output=True, text=True, timeout=self.timeout
+                step.command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=self.timeout,
             )
 
             step.return_code = result.returncode
@@ -295,7 +317,11 @@ class InstallationCoordinator:
                     )
 
         total_duration = time.time() - start_time
-        all_success = all(s.status == StepStatus.SUCCESS for s in self.steps)
+        # ❗ Suggest mode should never report success
+        if self.approval_policy.mode == ApprovalMode.SUGGEST:
+            all_success = False
+        else:
+            all_success = all(s.status == StepStatus.SUCCESS for s in self.steps)
 
         if all_success:
             self._log("Installation completed successfully")
