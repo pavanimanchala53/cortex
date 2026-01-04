@@ -234,7 +234,7 @@ Rules:
         {
         "action": "...",
         "domain": "...",
-        "install_mode" "..."
+        "install_mode": "..."
         "description": "...",
         "ambiguous": true/false,
         "confidence": 0.0
@@ -528,7 +528,7 @@ Respond with ONLY this JSON format (no explanations):
         enriched_input = user_input + context
         return self.parse(enriched_input, validate=validate)
 
-    def _estimate_confidence(self, user_input: str, domain: str) -> float:
+    def _estimate_clarity(self, user_input: str, domain: str) -> float:
         """
         Estimate confidence score without hardcoding meaning.
         Uses simple linguistic signals.

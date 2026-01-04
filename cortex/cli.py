@@ -27,6 +27,7 @@ from cortex.validators import validate_api_key, validate_install_request
 # Suppress noisy log messages in normal operation
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("cortex.installation_history").setLevel(logging.ERROR)
+logger = logging.getLogger(__name__)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -558,6 +559,7 @@ class CortexCLI:
         execute: bool = False,
         dry_run: bool = False,
         parallel: bool = False,
+        assume_yes: bool = False,
     ):
         # Validate input first
         is_valid, error = validate_install_request(software)
@@ -653,16 +655,25 @@ class CortexCLI:
                 print(f"  {i}. {cmd}")
 
             # ---------- User confirmation ----------
-            # ---------- User confirmation ----------
             if execute:
                 if not _is_interactive():
-                    # Non-interactive mode (pytest / CI) → auto-approve
+                    if not assume_yes:
+                        raise RuntimeError(
+                            "Non-interactive execution requires explicit approval. "
+                            "Re-run with --yes to allow command execution."
+                        )
+
+                    logger.info(
+                        "All commands explicitly approved via --yes flag (non-interactive mode)"
+                    )
                     choice = "y"
+
                 else:
                     print("\nDo you want to proceed with these commands?")
                     print("  [y] Yes, execute")
                     print("  [e] Edit commands")
                     print("  [n] No, cancel")
+
                     choice = input("Enter choice [y/e/n]: ").strip().lower()
 
                 if choice == "n":
@@ -1641,6 +1652,7 @@ def show_rich_help():
     table.add_row("history", "View history")
     table.add_row("rollback <id>", "Undo installation")
     table.add_row("notify", "Manage desktop notifications")
+    table.add_row("env", "Manage environment variables")
     table.add_row("cache stats", "Show LLM cache statistics")
     table.add_row("stack <name>", "Install the stack")
     table.add_row("sandbox <cmd>", "Test packages in Docker sandbox")
