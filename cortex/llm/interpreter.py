@@ -119,7 +119,7 @@ class CommandInterpreter:
         domain_context = ""
         if domain and domain != "unknown":
             domain_context = f"\n\nDomain: {domain}\nGenerate commands specific to {domain}. Avoid installing unrelated packages."
-        
+
         if simplified:
             return f"""You must respond with ONLY a JSON object. No explanations, no markdown, no code blocks.
 
@@ -325,7 +325,10 @@ Respond with ONLY this JSON format (no explanations):
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": self._get_system_prompt(simplified=True, domain=domain)},
+                    {
+                        "role": "system",
+                        "content": self._get_system_prompt(simplified=True, domain=domain),
+                    },
                     {"role": "user", "content": enhanced_input},
                 ],
                 temperature=0.1,  # Lower temperature for more focused responses
