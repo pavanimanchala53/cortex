@@ -130,7 +130,7 @@ class CommandInterpreter:
     - Commands will be executed by a non-interactive POSIX-compatible shell
 
     Rules:
-    - Respond with ONLY valid JSON 
+    - Respond with ONLY valid JSON
     - The response MUST be a JSON array wrapped in an object under the "commands" key
     - No explanations, no markdown, no code blocks
     - Commands must be POSIX-compliant (portable across Linux shells)
@@ -183,6 +183,7 @@ class CommandInterpreter:
     ]}}
     {domain_context}
     """
+
     def _extract_intent_ollama(self, user_input: str) -> dict:
         import urllib.error
         import urllib.request
