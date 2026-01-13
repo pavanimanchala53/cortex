@@ -239,6 +239,7 @@ class CommandInterpreter:
                 "description": "Failed to extract intent",
                 "ambiguous": True,
                 "confidence": 0.0,
+                "install_mode": "system",
             }
 
     def _get_intent_prompt(self) -> str:
@@ -292,7 +293,7 @@ Response format (JSON only):
                 max_tokens=1000,
             )
 
-            content = response.choices[0].message.content.strip()
+            content = (response.choices[0].message.content or "").strip()
             return self._parse_commands(content)
         except Exception as e:
             raise RuntimeError(f"OpenAI API call failed: {str(e)}")
@@ -349,6 +350,7 @@ Response format (JSON only):
             "description": "Unstructured intent output",
             "ambiguous": True,
             "confidence": 0.0,
+            "install_mode": "system",
         }
 
     def _call_claude(
@@ -363,7 +365,7 @@ Response format (JSON only):
                 messages=[{"role": "user", "content": user_input}],
             )
 
-            content = response.content[0].text.strip()
+            content = (response.content[0].text or "").strip()
             return self._parse_commands(content)
         except Exception as e:
             raise RuntimeError(f"Claude API call failed: {str(e)}")
@@ -471,8 +473,8 @@ Respond with ONLY this JSON format (no explanations):
             data = json.loads(json_blob)
             commands = data.get("commands", [])
 
-            if isinstance(commands, list):
-                return [c for c in commands if isinstance(c, str) and c.strip()]
+            if not isinstance(commands, list):
+                raise ValueError("Commands must be a list")
 
             # Handle both formats:
             # 1. ["cmd1", "cmd2"] - direct string array
@@ -481,13 +483,13 @@ Respond with ONLY this JSON format (no explanations):
             for cmd in commands:
                 if isinstance(cmd, str):
                     # Direct string
-                    if cmd:
-                        result.append(cmd)
+                    if cmd.strip():
+                        result.append(cmd.strip())
                 elif isinstance(cmd, dict):
                     # Object with "command" key
                     cmd_str = cmd.get("command", "")
-                    if cmd_str:
-                        result.append(cmd_str)
+                    if cmd_str and isinstance(cmd_str, str) and cmd_str.strip():
+                        result.append(cmd_str.strip())
 
             return result
         except (json.JSONDecodeError, ValueError) as e:
@@ -622,6 +624,24 @@ Respond with ONLY this JSON format (no explanations):
             }
 
     def extract_intent(self, user_input: str) -> dict:
+        """Extract intent from natural language input.
+
+        Analyzes the user's request to determine:
+        - action: Type of operation (install, remove, etc.)
+        - domain: Category of request (machine learning, web development, etc.)
+        - install_mode: Installation type (system, python, or mixed)
+        - confidence: Confidence level (0.0-1.0)
+        - ambiguous: Whether clarification is needed
+
+        Args:
+            user_input: Natural language description of desired action
+
+        Returns:
+            Dict with keys: action, domain, install_mode, description, ambiguous, confidence
+
+        Raises:
+            ValueError: If input is empty
+        """
         if not user_input or not user_input.strip():
             raise ValueError("User input cannot be empty")
 
