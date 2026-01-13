@@ -159,7 +159,7 @@ class CommandInterpreter:
     """
 
         return f"""You are a Linux system command expert.
-    Convert natural language requests into safe, executable Linux commands.
+    Convert natural language requests into safe, executable bash commands.
 
     {common_rules}
 
