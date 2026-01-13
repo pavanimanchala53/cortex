@@ -343,6 +343,10 @@ Response format (JSON only):
                     if key not in parsed:
                         raise ValueError("Missing intent field")
 
+                # Ensure description has a default if missing
+                if "description" not in parsed:
+                    parsed["description"] = ""
+
                 return parsed
         except Exception:
             pass
